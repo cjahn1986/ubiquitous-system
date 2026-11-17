@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Learning Engine — Forgetting Curve & Spaced Repetition</title>
+<style>
+  :root{
+    --bg:#f7f7f8; --card:#ffffff; --ink:#1a1a1e; --muted:#6b6b76; --line:#e5e5ea;
+    --accent:#3b6efe; --good:#1a9d6a; --warn:#d9822b; --bad:#d64545;
+    --grid:#ececf1;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0f0f12; --card:#17171c; --ink:#ececf0; --muted:#9a9aa6; --line:#2a2a33;
+           --accent:#6b93ff; --good:#3ac08a; --warn:#eaa14b; --bad:#f06a6a; --grid:#23232b; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:860px;margin:0 auto;padding:28px 18px 60px}
+  h1{font-size:23px;margin:0 0 4px} h2{font-size:17px;margin:0 0 10px}
+  .sub{color:var(--muted);margin:0 0 22px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:18px 18px 16px;margin:0 0 18px}
+  canvas{width:100%;height:auto;display:block}
+  .row{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+  .ctrl{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--muted);min-width:150px;flex:1}
+  input[type=range]{width:100%;accent-color:var(--accent)}
+  input[type=text]{background:transparent;border:1px solid var(--line);border-radius:8px;
+    color:var(--ink);padding:7px 9px;font-size:14px}
+  button{border:1px solid var(--line);background:var(--card);color:var(--ink);
+    border-radius:9px;padding:9px 13px;font-size:14px;cursor:pointer;font-weight:600}
+  button:hover{border-color:var(--accent)}
+  button.good{border-color:var(--good);color:var(--good)}
+  button.bad{border-color:var(--bad);color:var(--bad)}
+  .tiles{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 4px}
+  .tile{flex:1;min-width:120px;background:var(--bg);border:1px solid var(--line);
+    border-radius:10px;padding:10px 12px}
+  .tile .n{font-size:20px;font-weight:700} .tile .l{font-size:12px;color:var(--muted)}
+  .intervals{font-size:13px;color:var(--muted);margin-top:8px}
+  .intervals b{color:var(--ink)}
+  .legend{display:flex;gap:16px;font-size:13px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+  .sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:middle;margin-right:5px}
+  footer{color:var(--muted);font-size:13px;margin-top:8px}
+  footer b{color:var(--ink)}
+  code{background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Learning Engine</h1>
+  <p class="sub">The first slice: your <b>forgetting curve</b> and the review schedule that beats it. Built on three of the most solid findings in the science of memory.</p>
+
+  <!-- PANEL 1 -->
+  <div class="card">
+    <h2>1 · Your forgetting curve</h2>
+    <div class="row" style="margin-bottom:12px">
+      <div class="ctrl" style="flex:2">What are you learning?
+        <input id="name" type="text" value="Spanish verb conjugations">
+      </div>
+      <div class="ctrl">Target retention: <span id="trLbl">90%</span>
+        <input id="tr" type="range" min="80" max="97" value="90">
+      </div>
+      <div class="ctrl">Ease (growth per review): <span id="ezLbl">2.0×</span>
+        <input id="ez" type="range" min="130" max="300" value="200">
+      </div>
+    </div>
+    <canvas id="c1" width="820" height="300"></canvas>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--accent)"></span>retention over time</span>
+      <span><span class="sw" style="background:var(--good)"></span>next review (at target)</span>
+      <span><span class="sw" style="background:var(--muted)"></span>target line</span>
+    </div>
+    <div class="tiles">
+      <div class="tile"><div class="n" id="tNext">1.0 d</div><div class="l">next review in</div></div>
+      <div class="tile"><div class="n" id="tHalf">—</div><div class="l">memory half-life</div></div>
+      <div class="tile"><div class="n" id="tRev">0</div><div class="l">reviews done</div></div>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <button class="good" id="bGot">✓ Reviewed — got it</button>
+      <button class="bad" id="bMiss">✗ Reviewed — missed it</button>
+      <button id="bReset">Reset</button>
+    </div>
+    <div class="intervals" id="ivl"></div>
+  </div>
+
+  <!-- PANEL 2 -->
+  <div class="card">
+    <h2>2 · Why spacing wins (the payoff)</h2>
+    <p class="sub" style="margin:0 0 12px">Same five review sessions. One crams them into a day; the other spreads them out. Watch what each has left after 30 days.</p>
+    <canvas id="c2" width="820" height="300"></canvas>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--bad)"></span>massed (crammed)</span>
+      <span><span class="sw" style="background:var(--good)"></span>spaced</span>
+    </div>
+    <div class="tiles">
+      <div class="tile"><div class="n" id="mEnd" style="color:var(--bad)">—</div><div class="l">crammed · retention at day 30</div></div>
+      <div class="tile"><div class="n" id="sEnd" style="color:var(--good)">—</div><div class="l">spaced · retention at day 30</div></div>
+    </div>
+  </div>
+
+  <footer>
+    <b>What's solid science here:</b> the <b>forgetting curve</b> (Ebbinghaus, 1885 — memory decays roughly exponentially), the <b>spacing effect</b> (spread-out review beats cramming — one of psychology's most replicated results), and the <b>testing effect</b> (actively retrieving, i.e. reviewing, strengthens memory more than re-reading). <b>What's a model:</b> the exact curves use a simplified stability model in the spirit of modern spaced-repetition algorithms (SM-2 / FSRS); the numbers are illustrative, not clinical. Not medical or diagnostic advice.
+    <br><br><b>Where this goes next:</b> real item tracking, a concept-<i>network</i> view (what to learn in what order), and the power-law-of-practice curve for skills.
+  </footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const pal=()=>{const d=matchMedia('(prefers-color-scheme: dark)').matches;return{
+  ink:d?'#ececf0':'#1a1a1e',muted:d?'#9a9aa6':'#6b6b76',grid:d?'#23232b':'#ececf1',
+  accent:d?'#6b93ff':'#3b6efe',good:d?'#3ac08a':'#1a9d6a',bad:d?'#f06a6a':'#d64545',
+  card:d?'#17171c':'#ffffff'};};
+
+// ---- shared chart helper ----
+function chart(cv,{xmax,ymax=1,xlabel,ylabel,series,markers=[],hlines=[]}){
+  const p=pal(),dpr=Math.max(2,window.devicePixelRatio||1);
+  const W=cv.clientWidth||820,H=300; cv.width=W*dpr;cv.height=H*dpr;
+  const g=cv.getContext('2d');g.scale(dpr,dpr);g.clearRect(0,0,W,H);
+  const L=46,R=14,T=12,B=34, px=x=>L+(x/xmax)*(W-L-R), py=y=>T+(1-y/ymax)*(H-T-B);
+  g.strokeStyle=p.grid;g.lineWidth=1;g.fillStyle=p.muted;g.font='11px sans-serif';
+  for(let i=0;i<=5;i++){const y=ymax*i/5,Y=py(y);g.beginPath();g.moveTo(L,Y);g.lineTo(W-R,Y);g.stroke();
+    g.textAlign='right';g.fillText(Math.round(y*100)+'%',L-6,Y+3);}
+  for(let i=0;i<=6;i++){const x=xmax*i/6,X=px(x);g.textAlign='center';
+    g.fillText(x>=10?Math.round(x):x.toFixed(x<2?1:0),X,H-B+16);}
+  g.textAlign='center';g.fillStyle=p.muted;g.fillText(xlabel,(L+W-R)/2,H-4);
+  hlines.forEach(h=>{g.strokeStyle=p.muted;g.setLineDash([4,4]);g.beginPath();
+    g.moveTo(L,py(h));g.lineTo(W-R,py(h));g.stroke();g.setLineDash([]);});
+  series.forEach(s=>{g.strokeStyle=s.color;g.lineWidth=2.4;g.beginPath();
+    s.pts.forEach((pt,i)=>{const X=px(pt[0]),Y=py(Math.max(0,Math.min(ymax,pt[1])));
+      i?g.lineTo(X,Y):g.moveTo(X,Y);});g.stroke();});
+  markers.forEach(m=>{g.strokeStyle=m.color;g.lineWidth=1.6;g.setLineDash([3,3]);
+    g.beginPath();g.moveTo(px(m.x),T);g.lineTo(px(m.x),H-B);g.stroke();g.setLineDash([]);
+    g.fillStyle=m.color;g.beginPath();g.arc(px(m.x),py(m.y),4,0,7);g.fill();});
+}
+
+// ---- Panel 1 state ----
+let S=1, reviews=0, hist=[1];
+const targetR=()=>+$('tr').value/100, ease=()=>+$('ez').value/100;
+const tau=()=> S/Math.log(1/targetR());          // e-folding memory constant (days)
+
+function draw1(){
+  $('trLbl').textContent=$('tr').value+'%';
+  $('ezLbl').textContent=(ease()).toFixed(1)+'×';
+  const t=tau(), xmax=Math.max(4,S*1.9), pts=[];
+  for(let i=0;i<=120;i++){const x=xmax*i/120;pts.push([x,Math.exp(-x/t)]);}
+  chart($('c1'),{xmax,xlabel:'days since last review',
+    series:[{color:pal().accent,pts}],
+    hlines:[targetR()],
+    markers:[{x:S,y:targetR(),color:pal().good}]});
+  $('tNext').textContent=S<1?(S*24).toFixed(1)+' h':S.toFixed(1)+' d';
+  $('tHalf').textContent=(t*Math.LN2).toFixed(1)+' d';
+  $('tRev').textContent=reviews;
+  const nxt=hist.slice(-6).map(v=>v<1?(v*24).toFixed(0)+'h':v.toFixed(0)+'d').join(' → ');
+  $('ivl').innerHTML='Interval ladder: <b>'+nxt+'</b> &nbsp;·&nbsp; each clean recall multiplies your memory\'s staying power.';
+}
+$('bGot').onclick=()=>{S=S*ease();reviews++;hist.push(S);draw1();};
+$('bMiss').onclick=()=>{S=Math.max(0.5,S*0.4);reviews++;hist.push(S);draw1();};
+$('bReset').onclick=()=>{S=1;reviews=0;hist=[1];draw1();};
+['tr','ez'].forEach(id=>$(id).oninput=draw1);
+
+// ---- Panel 2: massed vs spaced (illustrative spacing-effect sim) ----
+function sim(reviewDays){
+  let tau=1.0,tLast=reviewDays[0],k=3.2; // bigger gain when reviewed at lower retention
+  const ev=[...reviewDays].sort((a,b)=>a-b);
+  const pts=[]; let ei=0;
+  for(let d=0;d<=30;d+=0.25){
+    while(ei<ev.length && ev[ei]<=d){
+      const Rnow=Math.exp(-(ev[ei]-tLast)/tau);
+      tau*= (1+k*(1-Rnow));          // spacing effect: lower Rnow at review -> bigger boost
+      tLast=ev[ei]; ei++;
+    }
+    pts.push([d, Math.exp(-(d-tLast)/tau)]);
+  }
+  return pts;
+}
+function draw2(){
+  const massed=sim([0,0.1,0.2,0.3,0.4]), spaced=sim([0,1,3,7,15]);
+  chart($('c2'),{xmax:30,xlabel:'days',
+    series:[{color:pal().bad,pts:massed},{color:pal().good,pts:spaced}]});
+  $('mEnd').textContent=Math.round(massed[massed.length-1][1]*100)+'%';
+  $('sEnd').textContent=Math.round(spaced[spaced.length-1][1]*100)+'%';
+}
+
+function drawAll(){draw1();draw2();}
+drawAll();
+addEventListener('resize',drawAll);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',drawAll);
+</script>
+</body>
+</html>
