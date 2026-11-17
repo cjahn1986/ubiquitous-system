@@ -39,6 +39,8 @@ README.md            human-facing overview
   a *verdict vs a null*, not just a number. `--demo` on any command to see it work.
 - **decide.py** — weighted decision matrix (SAW + TOPSIS + weight-perturbation stability);
   reports when methods disagree or the ranking is fragile. `--demo` ranks this roadmap.
+- **analogy.py** — structural-analogy strength scorer (bridge/surprise/mechanism/specificity);
+  ranks which cross-domain analogy is worth testing first. Mirrors the ranker in node-explorer.
 
 ## Conventions
 - **Commits:** branch off `main` if needed; the human asks before PRs. Commit author
@@ -51,10 +53,10 @@ README.md            human-facing overview
   ClinicalTrials, NIST). ConceptNet/Wikidata/OpenAlex are *not* allow-listed in-session but
   work from a normal browser. Env setup script installs the Python stack above.
 
-## Roadmap (ranked by `decide.py --demo`, most recent run)
-1. **Serendipity ranker** — have `pattern-theorist` score each theoretic use for how real the
-   structural analogy is, so the best cross-domain ideas sort to the top. *(next build)*
-2. "Who already solved this?" — OpenAlex structural-analog search (taste of the research moonshot).
+## Roadmap (ranked by `decide.py --demo`)
+1. ~~Serendipity ranker~~ **SHIPPED** — node-explorer now ranks theoretic uses by structural-analogy
+   strength; `scripts/analogy.py` is the reproducible agent-side mirror.
+2. **"Who already solved this?"** — OpenAlex structural-analog search (taste of the research moonshot). *(next)*
 3. PWA / offline-installable workshop (accessibility).
 4. Provenance / data "nutrition label" + challenge button.
 5. More outside-the-box nodes (Wiktionary, OEIS, folklore).

@@ -38,6 +38,8 @@
   .uses h3.k{border-color:var(--good)} .uses h3.a{border-color:var(--wiki)} .uses h3.t{border-color:var(--warn)}
   .use{background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin:6px 0;font-size:13.5px}
   .use .meta{font-size:11px;color:var(--muted);margin-top:3px}
+  .sbar{height:5px;background:var(--bg);border:1px solid var(--line);border-radius:4px;margin-top:6px;overflow:hidden}
+  .sfill{height:100%;background:var(--warn)}
   .pill{font-size:10px;padding:1px 6px;border-radius:5px;border:1px solid var(--line);color:var(--muted)}
   .legend{font-size:12px;color:var(--muted);margin-top:8px}
   .sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin:0 4px 0 10px;vertical-align:middle}
@@ -84,14 +86,14 @@
       <div id="uKnown"><div class="use">—</div></div>
       <h3 class="a">▸ Adjacent uses <span class="pill">domains next door</span></h3>
       <div id="uAdj"><div class="use">—</div></div>
-      <h3 class="t">▸ Theoretic uses <span class="pill">speculative — test before trusting</span></h3>
+      <h3 class="t">▸ Theoretic uses <span class="pill">ranked by analogy strength · speculative</span></h3>
       <div id="uTheo"><div class="use">—</div></div>
     </div>
   </div>
 
   <footer>
     <b>The nodes:</b> <b>Wikipedia</b> (summary + link-graph), <b>Wikidata</b> (structured "has use" relations), <b>ConceptNet</b> (the outside-the-box commonsense web — <i>UsedFor, CapableOf, RelatedTo</i>), <b>OpenAlex</b> (cross-field research concepts). All open, keyless, open-source data.<br>
-    <b>How uses are made — honestly:</b> <b>Known</b> = pulled straight from a source's "used-for" relations (linked, checkable). <b>Adjacent</b> = lateral neighbors from different fields (worth exploring, not verified). <b>Theoretic</b> = cross-domain hypotheses the engine <i>generates</i> by pairing your concept with a distant node — these are prompts to test, never facts.<br>
+    <b>How uses are made — honestly:</b> <b>Known</b> = pulled straight from a source's "used-for" relations (linked, checkable). <b>Adjacent</b> = lateral neighbors from different fields (worth exploring, not verified). <b>Theoretic</b> = cross-domain hypotheses the engine <i>generates</i>, then <b>ranks by structural-analogy strength</b> — a transparent heuristic rewarding cross-source bridges, true domain-distance, and analogies anchored on a transferable mechanism (not a surface trait). A high score means "test this one first," never "this is true." Still prompts, never facts.<br>
     <b>Privacy:</b> runs entirely in your browser; no account, no keys, nothing sent anywhere except the open APIs above. If a source can't be reached, its chip turns red and the app keeps working on the rest.
   </footer>
 </div>
@@ -193,35 +195,52 @@ function drawGraph(center,nodes){
 }
 
 // ---------- USES ----------
+// ---- analogy strength (the serendipity ranker — approximates the pattern-theorist) ----
+const GENERIC=new Set([‘system’,’process’,’thing’,’method’,’study’,’research’,’science’,’theory’,’concept’,’field’,’analysis’,’model’,’structure’,’phenomenon’,’property’,’effect’,’state’,’function’,’material’,’activity’]);
+const MECH=[‘transport’,’flow’,’feedback’,’growth’,’signal’,’storage’,’store’,’optim’,’defen’,’filter’,’oscillat’,’network’,’adapt’,’exchange’,’conversion’,’convert’,’pattern’,’self-organ’,’diffus’,’gradient’,’threshold’,’cascade’,’regulat’,’synchron’,’redund’,’recycl’,’distribut’,’rout’,’swarm’,’balance’,’equilibri’,’sens’];
+const toks=s=>new Set(String(s).toLowerCase().split(/[^a-z]+/).filter(w=>w.length>3));
+function overlap(a,b){const A=toks(a),B=toks(b);let n=0;A.forEach(w=>{if(B.has(w))n++;});return n/Math.max(1,Math.min(A.size,B.size));}
+const hasMech=s=>{s=String(s).toLowerCase();return MECH.some(m=>s.includes(m));};
+function analogyScore(concept,target,prop,ctx){
+  const t=target.toLowerCase(), oa=ctx.oaMap[t];
+  let bridge=(oa?25*Math.min(1,(oa.score||0)*1.4):0);
+  const sources=(oa?1:0)+(ctx.adjSet.has(t)?1:0)+(ctx.wikiSet.has(t)?1:0);
+  if(sources>=2) bridge+=10;
+  let surprise=15*(1-overlap(concept,target)); if(oa) surprise+=Math.min(10,(oa.level||0)*3);
+  const mech=(hasMech(prop)?15:0)+(hasMech(target)?10:0);
+  const spec=GENERIC.has(t)?2:Math.min(15,6+t.split(/\s+/).length*3);
+  const total=Math.max(0,Math.min(100,Math.round(bridge+surprise+mech+spec)));
+  const why=[]; if(sources>=2)why.push(‘multi-source bridge’); if(oa&&(oa.score||0)>0.3)why.push(‘literature-linked’);
+  if(overlap(concept,target)<0.2)why.push(‘cross-domain’); if(hasMech(prop)||hasMech(target))why.push(‘mechanism-anchored’);
+  if(GENERIC.has(t))why.push(‘too generic’);
+  return {total,why:why.join(‘ · ‘)||’weak signals’};
+}
 function renderUses(concept,data){
   const {wd,cn,oa,wiki}=data;
-  // KNOWN
   const known=[];
-  (wd?.uses||[]).forEach(u=>known.push({t:u,src:'Wikidata',rel:'has use',col:'var(--wd)'}));
-  (cn?.known||[]).forEach(k=>known.push({t:k.text,src:'ConceptNet',rel:k.rel,col:'var(--cn)'}));
-  // ADJACENT
+  (wd?.uses||[]).forEach(u=>known.push({t:u,src:’Wikidata’,rel:’has use’,col:’var(--wd)’}));
+  (cn?.known||[]).forEach(k=>known.push({t:k.text,src:’ConceptNet’,rel:k.rel,col:’var(--cn)’}));
   const adj=[];
-  (oa?.related||[]).slice(0,6).forEach(r=>adj.push({t:r.name,src:'OpenAlex',rel:'related field',col:'var(--oa)'}));
-  (cn?.adj||[]).slice(0,5).forEach(a=>adj.push({t:a,src:'ConceptNet',rel:'related',col:'var(--cn)'}));
-  (wiki?.links||[]).slice(0,4).forEach(l=>adj.push({t:l,src:'Wikipedia',rel:'linked',col:'var(--wiki)'}));
-  // THEORETIC — generate cross-domain hypotheses
-  const props=(cn?.props||[]);
-  const distant=[...(oa?.related||[]).slice(-4).map(r=>r.name),...(cn?.adj||[]).slice(-4)]
-    .filter((v,i,a)=>v&&a.indexOf(v)===i);
-  const prop=props[0]||((cn?.known||[])[0]?.text)||'core mechanism';
-  const theo=[];
-  distant.slice(0,3).forEach(d=>{
-    theo.push(`What if the way <b>${concept}</b> achieves “${prop}” were transferred to <b>${d}</b>? Where’s the structural analogy, and what breaks it?`);
-  });
-  if(props[1]&&distant[0]) theo.push(`Could “${props[1]}” of ${concept} be engineered into ${distant[0]} as a new capability?`);
+  (oa?.related||[]).slice(0,6).forEach(r=>adj.push({t:r.name,src:’OpenAlex’,rel:’related field’,col:’var(--oa)’}));
+  (cn?.adj||[]).slice(0,5).forEach(a=>adj.push({t:a,src:’ConceptNet’,rel:’related’,col:’var(--cn)’}));
+  (wiki?.links||[]).slice(0,4).forEach(l=>adj.push({t:l,src:’Wikipedia’,rel:’linked’,col:’var(--wiki)’}));
+  // THEORETIC — generate candidates, then RANK by structural-analogy strength
+  const oaMap={}; (oa?.related||[]).forEach(r=>oaMap[r.name.toLowerCase()]={score:r.score,level:r.level});
+  const ctx={oaMap,adjSet:new Set((cn?.adj||[]).map(x=>x.toLowerCase())),wikiSet:new Set((wiki?.links||[]).map(x=>x.toLowerCase()))};
+  const prop=(cn?.props||[])[0]||((cn?.known||[])[0]?.text)||’its core mechanism’;
+  const cands=[...new Set([...(oa?.related||[]).map(r=>r.name),...(cn?.adj||[])])]
+    .filter(d=>d&&d.toLowerCase()!==concept.toLowerCase());
+  const theo=cands.map(d=>({d,...analogyScore(concept,d,prop,ctx)})).sort((a,b)=>b.total-a.total).slice(0,4);
 
-  const box=(arr,fmt)=> arr.length? arr.map(fmt).join('') : '<div class="use">No data from the reachable sources for this tier.</div>';
-  $('uKnown').innerHTML=box(known,u=>`<div class="use">${u.t}
-     <div class="meta"><span class="pill" style="border-color:${u.col};color:${u.col}">${u.src}</span> · ${u.rel}</div></div>`);
-  $('uAdj').innerHTML=box(adj,u=>`<div class="use">${u.t}
-     <div class="meta"><span class="pill" style="border-color:${u.col};color:${u.col}">${u.src}</span> · ${u.rel}</div></div>`);
-  $('uTheo').innerHTML=box(theo,t=>`<div class="use">${t}
-     <div class="meta"><span class="pill" style="border-color:var(--warn);color:var(--warn)">generated</span> · speculative</div></div>`);
+  const box=(arr,fmt)=> arr.length? arr.map(fmt).join(‘’) : ‘<div class=”use”>No data from the reachable sources for this tier.</div>’;
+  $(‘uKnown’).innerHTML=box(known,u=>`<div class=”use”>${u.t}
+     <div class=”meta”><span class=”pill” style=”border-color:${u.col};color:${u.col}”>${u.src}</span> · ${u.rel}</div></div>`);
+  $(‘uAdj’).innerHTML=box(adj,u=>`<div class=”use”>${u.t}
+     <div class=”meta”><span class=”pill” style=”border-color:${u.col};color:${u.col}”>${u.src}</span> · ${u.rel}</div></div>`);
+  $(‘uTheo’).innerHTML= theo.length? theo.map(x=>`<div class=”use”>What if the way <b>${concept}</b> achieves “${prop}” were carried into <b>${x.d}</b>? Where’s the shared structure — and what breaks it?
+     <div class=”meta”><span class=”pill” style=”border-color:var(--warn);color:var(--warn)”>analogy ${x.total}/100</span> · ${x.why} · speculative</div>
+     <div class=”sbar”><div class=”sfill” style=”width:${x.total}%”></div></div></div>`).join(‘’)
+     : ‘<div class=”use”>Open this in a browser so ConceptNet &amp; OpenAlex load — they supply the structural signal the ranker needs.</div>’;
 }
 
 // ---------- ORCHESTRATION ----------
