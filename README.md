@@ -46,3 +46,8 @@ python3 .claude/skills/chem-tools/chemtool.py balance "C8H18 + O2 -> CO2 + H2O"
 ```
 
 `balance` handles neutral species only; ionic redox equations are balanced by half-reactions.
+
+## Beta
+This is **v0.1.0-beta**. Browser tools live in `tools/` (installable PWA, works offline);
+Claude Code agents live in `.claude/`. See **[BETA.md](BETA.md)** for how to run and what to test.
+Live (if GitHub Pages is enabled): https://cjahn1986.github.io/ubiquitous-system/

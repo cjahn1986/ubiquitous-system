@@ -54,12 +54,15 @@ README.md            human-facing overview
   work from a normal browser. Env setup script installs the Python stack above.
 
 ## Roadmap (ranked by `decide.py --demo`)
-1. ~~Serendipity ranker~~ **SHIPPED** — node-explorer now ranks theoretic uses by structural-analogy
-   strength; `scripts/analogy.py` is the reproducible agent-side mirror.
-2. **"Who already solved this?"** — OpenAlex structural-analog search (taste of the research moonshot). *(next)*
-3. PWA / offline-installable workshop (accessibility).
-4. Provenance / data "nutrition label" + challenge button.
-5. More outside-the-box nodes (Wiktionary, OEIS, folklore).
+1. ~~Serendipity ranker~~ **SHIPPED** — node-explorer ranks theoretic uses by analogy strength;
+   `scripts/analogy.py` is the reproducible agent-side mirror.
+2. ~~"Who already solved this?"~~ **SHIPPED (beta)** — each theoretic analogy links to the literature
+   at the structural intersection.
+3. ~~PWA / offline-installable workshop~~ **SHIPPED** — manifest + service worker; installable, offline.
+4. Provenance / data "nutrition label" + challenge button. *(backlog)*
+5. More outside-the-box nodes (Wiktionary, OEIS, folklore). *(backlog)*
+
+Released: **v0.1.0-beta**. See BETA.md for how to run/test.
 
 ## North star
 A cross-domain **Pattern Engine**: detect the structure in any problem, find the field that

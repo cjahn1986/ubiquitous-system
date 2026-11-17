@@ -1,0 +1,13 @@
+{
+  "name": "Ubiquitous System",
+  "short_name": "UbiqSystem",
+  "description": "A workshop for seeing the structure under things — and putting it to use. Learning engine, knowledge-node explorer, decision matrix.",
+  "start_url": "index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f0f12",
+  "theme_color": "#3b6efe",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

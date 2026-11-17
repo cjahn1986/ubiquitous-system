@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#3b6efe">
+<link rel="icon" href="icon.svg">
+<script>if('serviceWorker'in navigator){addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}</script>
 <title>Node Explorer — open knowledge → variable uses</title>
 <style>
   :root{ --bg:#f7f7f8; --card:#fff; --ink:#1a1a1e; --muted:#6b6b76; --line:#e5e5ea; --bg2:#f0f0f3;
@@ -239,7 +243,8 @@ function renderUses(concept,data){
      <div class=”meta”><span class=”pill” style=”border-color:${u.col};color:${u.col}”>${u.src}</span> · ${u.rel}</div></div>`);
   $(‘uTheo’).innerHTML= theo.length? theo.map(x=>`<div class=”use”>What if the way <b>${concept}</b> achieves “${prop}” were carried into <b>${x.d}</b>? Where’s the shared structure — and what breaks it?
      <div class=”meta”><span class=”pill” style=”border-color:var(--warn);color:var(--warn)”>analogy ${x.total}/100</span> · ${x.why} · speculative</div>
-     <div class=”sbar”><div class=”sfill” style=”width:${x.total}%”></div></div></div>`).join(‘’)
+     <div class=”sbar”><div class=”sfill” style=”width:${x.total}%”></div></div>
+     <div style=”margin-top:6px”><a href=”https://scholar.google.com/scholar?q=${encodeURIComponent(concept+’ ‘+x.d)}” target=”_blank” rel=”noopener”>📚 who’s already working where these meet? ↗</a></div></div>`).join(‘’)
      : ‘<div class=”use”>Open this in a browser so ConceptNet &amp; OpenAlex load — they supply the structural signal the ranker needs.</div>’;
 }
 
