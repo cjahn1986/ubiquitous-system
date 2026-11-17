@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decision Matrix</title>
+<style>
+  :root{ --bg:#f7f7f8; --card:#fff; --ink:#1a1a1e; --muted:#6b6b76; --line:#e5e5ea; --bg2:#f0f0f3;
+    --accent:#3b6efe; --good:#1a9d6a; --warn:#c2740f;}
+  @media(prefers-color-scheme:dark){ :root{ --bg:#0f0f12; --card:#17171c; --ink:#ececf0; --muted:#9a9aa6;
+    --line:#2a2a33; --bg2:#1c1c22; --accent:#6b93ff; --good:#3ac08a; --warn:#eaa14b;}}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:960px;margin:0 auto;padding:26px 16px 60px}
+  h1{font-size:22px;margin:0 0 3px} .sub{color:var(--muted);margin:0 0 18px;font-size:14px}
+  table{border-collapse:collapse;width:100%;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:center}
+  th{background:var(--bg2);font-size:12px;color:var(--muted);font-weight:600}
+  td:first-child,th:first-child{text-align:left}
+  input{background:transparent;border:1px solid var(--line);border-radius:7px;color:var(--ink);
+    padding:5px 7px;font-size:13px;width:64px;text-align:center}
+  input.name{width:94%;text-align:left}
+  .wrow input{width:52px}
+  button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;
+    padding:7px 11px;font-size:13px;font-weight:600;cursor:pointer;margin:3px 3px 0 0}
+  button:hover{border-color:var(--accent)} button.p{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .x{color:var(--muted);cursor:pointer;font-weight:700}
+  .res{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:16px}
+  .bar{height:20px;background:var(--accent);border-radius:5px}
+  .reslab{display:flex;justify-content:space-between;font-size:13px;margin:9px 0 3px}
+  .win{color:var(--good);font-weight:700} .note{color:var(--muted);font-size:12.5px;margin-top:10px}
+  .dir{font-size:11px;color:var(--muted);cursor:pointer;text-decoration:underline}
+  footer{color:var(--muted);font-size:12.5px;margin-top:18px;line-height:1.5} footer b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Decision Matrix</h1>
+  <p class="sub">Score options against weighted criteria; get a ranked, honest answer. Weights auto-normalize. Mark a criterion <b>↓</b> if lower is better (a cost). Mirror of <code>scripts/decide.py</code>.</p>
+
+  <div style="overflow-x:auto">
+    <table id="tbl"></table>
+  </div>
+  <div>
+    <button id="addOpt">+ Option</button>
+    <button id="addCrit">+ Criterion</button>
+    <button class="p" id="calc">Rank ▸</button>
+    <button id="seed">Load roadmap example</button>
+  </div>
+
+  <div class="res" id="res" style="display:none"></div>
+
+  <footer>
+    <b>Method:</b> Simple Additive Weighting — each column is normalized (benefit: value/max; cost: min/value), multiplied by its weight, and summed. <b>Honesty:</b> it also perturbs the weights ±25% many times and reports whether the winner is <i>robust</i> or <i>fragile</i>. A matrix that hides its own fragility is worse than none. Runs entirely in your browser.
+  </footer>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+let crit=[{n:"Value",w:30,benefit:true},{n:"Viability",w:20,benefit:true},
+          {n:"Effort",w:15,benefit:false},{n:"Alignment",w:20,benefit:true}];
+let opts=[{n:"Option A",s:[4,3,2,4]},{n:"Option B",s:[5,4,3,5]},{n:"Option C",s:[3,5,2,3]}];
+
+function render(){
+  let h="<tr><th>Option \\ Criterion</th>";
+  crit.forEach((c,j)=>h+=`<th><input class="name" style="width:78px" value="${c.n}" data-c="${j}">`
+    +`<div><input class="w" style="width:42px" value="${c.w}" data-w="${j}"> `
+    +`<span class="dir" data-d="${j}">${c.benefit?'benefit':'cost ↓'}</span>`
+    +` <span class="x" data-dc="${j}">✕</span></div></th>`);
+  h+="<th></th></tr>";
+  opts.forEach((o,i)=>{
+    h+=`<tr><td><input class="name" value="${o.n}" data-o="${i}"></td>`;
+    crit.forEach((c,j)=>h+=`<td><input value="${o.s[j]??0}" data-s="${i},${j}"></td>`);
+    h+=`<td><span class="x" data-do="${i}">✕</span></td></tr>`;
+  });
+  $('tbl').innerHTML=h;
+  $('tbl').querySelectorAll('[data-c]').forEach(e=>e.onchange=()=>crit[+e.dataset.c].n=e.value);
+  $('tbl').querySelectorAll('[data-w]').forEach(e=>e.onchange=()=>{crit[+e.dataset.w].w=+e.value||0;});
+  $('tbl').querySelectorAll('[data-o]').forEach(e=>e.onchange=()=>opts[+e.dataset.o].n=e.value);
+  $('tbl').querySelectorAll('[data-s]').forEach(e=>e.onchange=()=>{const[i,j]=e.dataset.s.split(',').map(Number);opts[i].s[j]=+e.value||0;});
+  $('tbl').querySelectorAll('[data-d]').forEach(e=>e.onclick=()=>{crit[+e.dataset.d].benefit=!crit[+e.dataset.d].benefit;render();});
+  $('tbl').querySelectorAll('[data-dc]').forEach(e=>e.onclick=()=>{const j=+e.dataset.dc;crit.splice(j,1);opts.forEach(o=>o.s.splice(j,1));render();});
+  $('tbl').querySelectorAll('[data-do]').forEach(e=>e.onclick=()=>{opts.splice(+e.dataset.do,1);render();});
+}
+function saw(W){
+  const tot=W.reduce((a,b)=>a+b,0)||1, w=W.map(x=>x/tot);
+  return opts.map(o=>{let sc=0;crit.forEach((c,j)=>{
+    const col=opts.map(p=>p.s[j]||0);
+    const v=c.benefit?(o.s[j]||0)/(Math.max(...col)||1):(Math.min(...col)||0)/((o.s[j]||1e-9));
+    sc+=w[j]*v;});return sc;});
+}
+function calc(){
+  const base=saw(crit.map(c=>c.w));
+  const order=[...opts.keys()].sort((a,b)=>base[b]-base[a]);
+  const mx=Math.max(...base)||1;
+  // stability
+  let wins={};
+  for(let t=0;t<300;t++){const W=crit.map(c=>c.w*(1+(Math.random()-.5)*.5));
+    const sc=saw(W);const top=sc.indexOf(Math.max(...sc));wins[top]=(wins[top]||0)+1;}
+  const champ=+Object.entries(wins).sort((a,b)=>b[1]-a[1])[0][0];
+  const conf=wins[champ]/300;
+  let h=`<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Ranking (Simple Additive Weighting)</div>`;
+  order.forEach((i,r)=>{h+=`<div class="reslab"><span>${r+1}. <b class="${r==0?'win':''}">${opts[i].n}</b></span><span>${base[i].toFixed(3)}</span></div>`
+    +`<div class="bar" style="width:${Math.max(3,base[i]/mx*100)}%"></div>`;});
+  h+=`<div class="note">Winner <b>${opts[order[0]].n}</b> stays #1 in <b>${Math.round(conf*100)}%</b> of weight-perturbation trials — `
+    +(conf>0.7?'<span class="win">robust</span>.':'<span style="color:var(--warn)">fragile; your weights are driving the result</span>.')+`</div>`;
+  $('res').style.display='block';$('res').innerHTML=h;
+}
+$('addOpt').onclick=()=>{opts.push({n:"New option",s:crit.map(()=>3)});render();};
+$('addCrit').onclick=()=>{crit.push({n:"Criterion",w:10,benefit:true});opts.forEach(o=>o.s.push(3));render();};
+$('calc').onclick=calc;
+$('seed').onclick=()=>{
+  crit=[{n:"Value",w:30,benefit:true},{n:"Viability",w:20,benefit:true},{n:"Effort",w:15,benefit:false},
+        {n:"Alignment",w:20,benefit:true},{n:"Leverage",w:15,benefit:true}];
+  opts=[{n:"Serendipity ranker",s:[5,4,3,5,5]},{n:"PWA / offline",s:[4,5,2,4,2]},
+        {n:"'Who solved this?' search",s:[5,3,4,5,4]},{n:"More nodes",s:[3,4,2,3,2]},
+        {n:"Provenance labels",s:[3,5,2,4,3]}];
+  render();calc();};
+render();
+</script>
+</body>
+</html>
