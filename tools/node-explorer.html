@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Node Explorer — open knowledge → variable uses</title>
+<style>
+  :root{ --bg:#f7f7f8; --card:#fff; --ink:#1a1a1e; --muted:#6b6b76; --line:#e5e5ea; --bg2:#f0f0f3;
+    --wiki:#3b6efe; --wd:#17a398; --cn:#b5539c; --oa:#d9822b; --good:#1a9d6a; --warn:#c2740f; --bad:#d64545;}
+  @media (prefers-color-scheme: dark){ :root{ --bg:#0f0f12; --card:#17171c; --ink:#ececf0; --muted:#9a9aa6;
+    --line:#2a2a33; --bg2:#1c1c22; --wiki:#6b93ff; --wd:#39c9bb; --cn:#e07bc6; --oa:#eaa14b;
+    --good:#3ac08a; --warn:#eaa14b; --bad:#f06a6a;}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1000px;margin:0 auto;padding:24px 16px 60px}
+  h1{font-size:22px;margin:0 0 2px} .sub{color:var(--muted);margin:0 0 18px;font-size:14px}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  input[type=text]{flex:1;min-width:220px;background:var(--card);border:1px solid var(--line);
+    border-radius:10px;color:var(--ink);padding:11px 13px;font-size:15px}
+  button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;
+    padding:11px 15px;font-size:14px;font-weight:600;cursor:pointer}
+  button:hover{border-color:var(--wiki)} button.go{background:var(--wiki);color:#fff;border-color:var(--wiki)}
+  .chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;font-size:12px}
+  .src{padding:3px 9px;border-radius:20px;border:1px solid var(--line);color:var(--muted);display:flex;gap:6px;align-items:center}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+  .src.on .dot{background:var(--good)} .src.off .dot{background:var(--bad)} .src.load .dot{background:var(--warn)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:720px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .card h2{font-size:15px;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center}
+  .tag{font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px;color:#fff}
+  #sumExtract{font-size:14px;color:var(--ink)} #sumDesc{color:var(--muted);font-size:13px;margin:2px 0 8px}
+  a{color:var(--wiki);text-decoration:none} a:hover{text-decoration:underline}
+  svg{width:100%;height:340px;display:block;touch-action:none}
+  .node-lab{font:11px sans-serif;fill:var(--ink)} .center-lab{font:600 13px sans-serif;fill:var(--ink)}
+  .uses h3{font-size:13px;margin:14px 0 6px;padding-left:9px;border-left:3px solid var(--muted)}
+  .uses h3.k{border-color:var(--good)} .uses h3.a{border-color:var(--wiki)} .uses h3.t{border-color:var(--warn)}
+  .use{background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin:6px 0;font-size:13.5px}
+  .use .meta{font-size:11px;color:var(--muted);margin-top:3px}
+  .pill{font-size:10px;padding:1px 6px;border-radius:5px;border:1px solid var(--line);color:var(--muted)}
+  .legend{font-size:12px;color:var(--muted);margin-top:8px}
+  .sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin:0 4px 0 10px;vertical-align:middle}
+  footer{color:var(--muted);font-size:12.5px;margin-top:18px;line-height:1.5} footer b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Node Explorer</h1>
+  <p class="sub">Point it at anything you're tracking. It pulls from open knowledge <b>nodes</b> — traditional and outside-the-box — and turns them into <b>variable uses</b>: known, adjacent, and theoretic.</p>
+
+  <div class="bar">
+    <input id="q" type="text" value="Photosynthesis" placeholder="a concept, topic, thing you're learning…">
+    <button class="go" id="go">Explore</button>
+    <button id="lucky">🎲 Surprise</button>
+  </div>
+  <div class="chips" id="chips">
+    <span class="src" data-s="wiki"><span class="dot"></span>Wikipedia</span>
+    <span class="src" data-s="wd"><span class="dot"></span>Wikidata</span>
+    <span class="src" data-s="cn"><span class="dot"></span>ConceptNet</span>
+    <span class="src" data-s="oa"><span class="dot"></span>OpenAlex</span>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2><span>Knowledge summary</span><span class="tag" style="background:var(--wiki)">Wikipedia</span></h2>
+      <div id="sumDesc">—</div>
+      <div id="sumExtract">Enter a concept and hit Explore.</div>
+      <div id="sumLink" style="margin-top:8px"></div>
+      <h2 style="margin-top:16px"><span>Node graph</span></h2>
+      <svg id="graph" viewBox="0 0 440 340" aria-label="knowledge node graph"></svg>
+      <div class="legend">
+        source:<span class="sw" style="background:var(--wiki)"></span>Wikipedia
+        <span class="sw" style="background:var(--wd)"></span>Wikidata
+        <span class="sw" style="background:var(--cn)"></span>ConceptNet
+        <span class="sw" style="background:var(--oa)"></span>OpenAlex · <i>click a node to travel to it</i>
+      </div>
+    </div>
+
+    <div class="card uses">
+      <h2><span>Variable uses</span></h2>
+      <h3 class="k">▸ Known uses <span class="pill">grounded in a source</span></h3>
+      <div id="uKnown"><div class="use">—</div></div>
+      <h3 class="a">▸ Adjacent uses <span class="pill">domains next door</span></h3>
+      <div id="uAdj"><div class="use">—</div></div>
+      <h3 class="t">▸ Theoretic uses <span class="pill">speculative — test before trusting</span></h3>
+      <div id="uTheo"><div class="use">—</div></div>
+    </div>
+  </div>
+
+  <footer>
+    <b>The nodes:</b> <b>Wikipedia</b> (summary + link-graph), <b>Wikidata</b> (structured "has use" relations), <b>ConceptNet</b> (the outside-the-box commonsense web — <i>UsedFor, CapableOf, RelatedTo</i>), <b>OpenAlex</b> (cross-field research concepts). All open, keyless, open-source data.<br>
+    <b>How uses are made — honestly:</b> <b>Known</b> = pulled straight from a source's "used-for" relations (linked, checkable). <b>Adjacent</b> = lateral neighbors from different fields (worth exploring, not verified). <b>Theoretic</b> = cross-domain hypotheses the engine <i>generates</i> by pairing your concept with a distant node — these are prompts to test, never facts.<br>
+    <b>Privacy:</b> runs entirely in your browser; no account, no keys, nothing sent anywhere except the open APIs above. If a source can't be reached, its chip turns red and the app keeps working on the rest.
+  </footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const setSrc=(s,st)=>{const el=document.querySelector(`.src[data-s="${s}"]`);el.className='src '+st;};
+const SRCCOL={wiki:'var(--wiki)',wd:'var(--wd)',cn:'var(--cn)',oa:'var(--oa)'};
+
+async function jget(url,ms=9000){
+  const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);
+  try{const r=await fetch(url,{signal:c.signal,headers:{'Accept':'application/json'}});
+    if(!r.ok)throw 0; return await r.json();}
+  finally{clearTimeout(t);}
+}
+const norm=s=>s.trim();
+
+// ---------- SOURCES ----------
+async function getWiki(q){
+  const t=norm(q).replace(/\s+/g,'_');
+  const sum=await jget('https://en.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(t));
+  let links=[];
+  try{const L=await jget('https://en.wikipedia.org/w/api.php?action=query&prop=links&plnamespace=0&titles='
+      +encodeURIComponent(sum.title)+'&pllimit=24&format=json&origin=*');
+    const pg=Object.values(L.query.pages)[0];
+    links=(pg.links||[]).map(l=>l.title).filter(n=>!/^(List of|ISBN|Doi|ISSN)/i.test(n));
+  }catch(e){}
+  return {title:sum.title,desc:sum.description||'',extract:sum.extract||'',
+    url:sum.content_urls?.desktop?.page||('https://en.wikipedia.org/wiki/'+t),links};
+}
+async function getConceptNet(q){
+  const term=norm(q).toLowerCase().replace(/\s+/g,'_');
+  const d=await jget('https://api.conceptnet.io/c/en/'+encodeURIComponent(term)+'?limit=60');
+  const known=[],adj=[],props=[];
+  (d.edges||[]).forEach(e=>{
+    const rel=e.rel.label, other=(e.end.label.toLowerCase()===norm(q).toLowerCase())?e.start.label:e.end.label;
+    if(['UsedFor','CapableOf','HasA','ReceivesAction'].includes(rel)) known.push({rel,text:other});
+    else if(['HasProperty','MadeOf'].includes(rel)) props.push(other);
+    else if(['RelatedTo','SimilarTo','AtLocation','Causes','HasContext'].includes(rel)) adj.push(other);
+  });
+  return {known,adj,props};
+}
+async function getWikidata(q){
+  const s=await jget('https://www.wikidata.org/w/api.php?action=wbsearchentities&search='
+    +encodeURIComponent(norm(q))+'&language=en&limit=1&format=json&origin=*');
+  if(!s.search||!s.search.length) return {uses:[]};
+  const id=s.search[0].id;
+  const e=await jget('https://www.wikidata.org/w/api.php?action=wbgetentities&ids='+id
+    +'&props=claims&format=json&origin=*');
+  const claims=e.entities[id].claims||{};
+  const grab=p=>(claims[p]||[]).map(c=>c.mainsnak?.datavalue?.value?.id).filter(Boolean);
+  const useIds=[...grab('P366'),...grab('P2283')].slice(0,8); // has use / uses
+  if(!useIds.length) return {uses:[]};
+  const lab=await jget('https://www.wikidata.org/w/api.php?action=wbgetentities&ids='
+    +useIds.join('|')+'&props=labels&languages=en&format=json&origin=*');
+  const uses=useIds.map(i=>lab.entities[i]?.labels?.en?.value).filter(Boolean);
+  return {uses,qid:id};
+}
+async function getOpenAlex(q){
+  const d=await jget('https://api.openalex.org/concepts?search='+encodeURIComponent(norm(q))+'&per_page=1');
+  if(!d.results||!d.results.length) return {related:[]};
+  const c=d.results[0];
+  const related=(c.related_concepts||[]).map(r=>({name:r.display_name,score:r.score,level:r.level}));
+  return {related,desc:c.description||''};
+}
+
+// ---------- GRAPH ----------
+function drawGraph(center,nodes){
+  const svg=$('graph');svg.innerHTML='';
+  const cx=220,cy=170,R=128, NS='http://www.w3.org/2000/svg';
+  const pick=nodes.slice(0,14);
+  pick.forEach((n,i)=>{
+    const a=(i/pick.length)*2*Math.PI - Math.PI/2;
+    const x=cx+R*Math.cos(a), y=cy+R*Math.sin(a);
+    const ln=document.createElementNS(NS,'line');
+    ln.setAttribute('x1',cx);ln.setAttribute('y1',cy);ln.setAttribute('x2',x);ln.setAttribute('y2',y);
+    ln.setAttribute('stroke',SRCCOL[n.src]);ln.setAttribute('stroke-opacity','0.35');ln.setAttribute('stroke-width','1.3');
+    svg.appendChild(ln);
+    const g=document.createElementNS(NS,'g');g.style.cursor='pointer';
+    g.onclick=()=>{$('q').value=n.label;run();};
+    const c=document.createElementNS(NS,'circle');
+    c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',6);
+    c.setAttribute('fill',SRCCOL[n.src]);g.appendChild(c);
+    const tx=document.createElementNS(NS,'text');
+    const right=Math.cos(a)>=0;
+    tx.setAttribute('x',x+(right?10:-10));tx.setAttribute('y',y+3);
+    tx.setAttribute('text-anchor',right?'start':'end');tx.setAttribute('class','node-lab');
+    tx.textContent=n.label.length>20?n.label.slice(0,19)+'…':n.label;
+    g.appendChild(tx);svg.appendChild(g);
+  });
+  const cc=document.createElementNS(NS,'circle');
+  cc.setAttribute('cx',cx);cc.setAttribute('cy',cy);cc.setAttribute('r',10);
+  cc.setAttribute('fill','var(--ink)');svg.appendChild(cc);
+  const ct=document.createElementNS(NS,'text');
+  ct.setAttribute('x',cx);ct.setAttribute('y',cy-16);ct.setAttribute('text-anchor','middle');
+  ct.setAttribute('class','center-lab');ct.textContent=center;svg.appendChild(ct);
+}
+
+// ---------- USES ----------
+function renderUses(concept,data){
+  const {wd,cn,oa,wiki}=data;
+  // KNOWN
+  const known=[];
+  (wd?.uses||[]).forEach(u=>known.push({t:u,src:'Wikidata',rel:'has use',col:'var(--wd)'}));
+  (cn?.known||[]).forEach(k=>known.push({t:k.text,src:'ConceptNet',rel:k.rel,col:'var(--cn)'}));
+  // ADJACENT
+  const adj=[];
+  (oa?.related||[]).slice(0,6).forEach(r=>adj.push({t:r.name,src:'OpenAlex',rel:'related field',col:'var(--oa)'}));
+  (cn?.adj||[]).slice(0,5).forEach(a=>adj.push({t:a,src:'ConceptNet',rel:'related',col:'var(--cn)'}));
+  (wiki?.links||[]).slice(0,4).forEach(l=>adj.push({t:l,src:'Wikipedia',rel:'linked',col:'var(--wiki)'}));
+  // THEORETIC — generate cross-domain hypotheses
+  const props=(cn?.props||[]);
+  const distant=[...(oa?.related||[]).slice(-4).map(r=>r.name),...(cn?.adj||[]).slice(-4)]
+    .filter((v,i,a)=>v&&a.indexOf(v)===i);
+  const prop=props[0]||((cn?.known||[])[0]?.text)||'core mechanism';
+  const theo=[];
+  distant.slice(0,3).forEach(d=>{
+    theo.push(`What if the way <b>${concept}</b> achieves “${prop}” were transferred to <b>${d}</b>? Where’s the structural analogy, and what breaks it?`);
+  });
+  if(props[1]&&distant[0]) theo.push(`Could “${props[1]}” of ${concept} be engineered into ${distant[0]} as a new capability?`);
+
+  const box=(arr,fmt)=> arr.length? arr.map(fmt).join('') : '<div class="use">No data from the reachable sources for this tier.</div>';
+  $('uKnown').innerHTML=box(known,u=>`<div class="use">${u.t}
+     <div class="meta"><span class="pill" style="border-color:${u.col};color:${u.col}">${u.src}</span> · ${u.rel}</div></div>`);
+  $('uAdj').innerHTML=box(adj,u=>`<div class="use">${u.t}
+     <div class="meta"><span class="pill" style="border-color:${u.col};color:${u.col}">${u.src}</span> · ${u.rel}</div></div>`);
+  $('uTheo').innerHTML=box(theo,t=>`<div class="use">${t}
+     <div class="meta"><span class="pill" style="border-color:var(--warn);color:var(--warn)">generated</span> · speculative</div></div>`);
+}
+
+// ---------- ORCHESTRATION ----------
+async function run(){
+  const q=$('q').value.trim(); if(!q)return;
+  ['wiki','wd','cn','oa'].forEach(s=>setSrc(s,'load'));
+  $('sumExtract').textContent='Exploring…';
+  const data={};
+  // Wikipedia (core, must-have)
+  let wiki=null;
+  try{wiki=await getWiki(q);data.wiki=wiki;setSrc('wiki','on');
+    $('sumDesc').textContent=wiki.desc; $('sumExtract').textContent=wiki.extract;
+    $('sumLink').innerHTML=`<a href="${wiki.url}" target="_blank" rel="noopener">Read on Wikipedia ↗</a>`;
+  }catch(e){setSrc('wiki','off');$('sumExtract').textContent='Wikipedia had no exact page for “'+q+'”. Try another spelling.';}
+  // Enrichment (parallel, graceful)
+  const [wd,cn,oa]=await Promise.allSettled([getWikidata(q),getConceptNet(q),getOpenAlex(q)]);
+  if(wd.status==='fulfilled'){data.wd=wd.value;setSrc('wd','on');}else setSrc('wd','off');
+  if(cn.status==='fulfilled'){data.cn=cn.value;setSrc('cn','on');}else setSrc('cn','off');
+  if(oa.status==='fulfilled'){data.oa=oa.value;setSrc('oa','on');}else setSrc('oa','off');
+
+  // Build node graph from whatever arrived
+  const nodes=[];
+  (wiki?.links||[]).slice(0,8).forEach(l=>nodes.push({label:l,src:'wiki'}));
+  (data.oa?.related||[]).slice(0,5).forEach(r=>nodes.push({label:r.name,src:'oa'}));
+  (data.cn?.adj||[]).slice(0,5).forEach(a=>nodes.push({label:a,src:'cn'}));
+  (data.wd?.uses||[]).slice(0,4).forEach(u=>nodes.push({label:u,src:'wd'}));
+  const seen=new Set(),uniq=nodes.filter(n=>{const k=n.label.toLowerCase();if(seen.has(k))return false;seen.add(k);return true;});
+  drawGraph(wiki?wiki.title:q, uniq);
+  renderUses(wiki?wiki.title:q, data);
+}
+$('go').onclick=run; $('q').addEventListener('keydown',e=>{if(e.key==='Enter')run();});
+$('lucky').onclick=()=>{const s=['Mycelium','Fermentation','Birdsong','Origami','Tidal power','Slime mold',
+  'Antibiotics','Cymatics','Phyllotaxis','Swarm intelligence','Graphene','Circadian rhythm'];
+  $('q').value=s[Math.floor(Math.random()*s.length)];run();};
+run();
+</script>
+</body>
+</html>
