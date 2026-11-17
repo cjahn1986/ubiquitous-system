@@ -1,12 +1,13 @@
 # Science agents for Claude Code
 
-Claude Code subagents for chemistry and for botany / molecular biology / pharmacology, plus a small computational toolkit they use to check numbers and structures instead of recalling them.
+Claude Code subagents for chemistry, for botany / molecular biology / pharmacology, and for poppy, cannabis and tobacco, plus a small computational toolkit they use to check numbers and structures instead of recalling them.
 
 ## Contents
 
 | Path | What it is |
 |---|---|
 | `.claude/agents/chemist.md` | The `chemist` subagent: every branch of chemistry |
+| `.claude/agents/plant-visionary.md` | The `plant-visionary` subagent: visionary world expert on *Papaver somniferum* and the Papaveraceae, *Cannabis* and the Cannabaceae, *Nicotiana* and the Solanaceae |
 | `.claude/agents/botanist-pharmacologist.md` | The `botanist-pharmacologist` subagent: botany, ethnobotany, phytochemistry, molecular biology, pharmacology and toxicology |
 | `.claude/skills/chem-tools/SKILL.md` | The `chem-tools` skill: tells Claude when and how to use the toolkit |
 | `.claude/skills/chem-tools/chemtool.py` | The toolkit script |
