@@ -6,6 +6,7 @@ Claude Code subagents for chemistry, for botany / molecular biology / pharmacolo
 
 | Path | What it is |
 |---|---|
+| `.claude/agents/pattern-theorist.md` | The `pattern-theorist`: the science of patterns across nature, society, math and information — complexity, fractals, networks, chaos, scaling laws, morphogenesis, cycles, biomimicry — with the discipline to tell a real pattern from a fooling one |
 | `.claude/agents/conductor.md` | The `conductor`: routes questions to the three specialists, combines their answers, and turns them into the simplest explanation and process. **Default main agent in this repo** (via `.claude/settings.json`) |
 | `.claude/settings.json` | Sets `"agent": "conductor"`; remove that line to get a plain Claude session |
 | `.claude/agents/chemist.md` | The `chemist` subagent: every branch of chemistry |
@@ -17,7 +18,7 @@ Claude Code subagents for chemistry, for botany / molecular biology / pharmacolo
 ## Setup
 
 ```bash
-pip install rdkit pubchempy sympy numpy scipy pint mendeleev biopython pandas
+pip install rdkit pubchempy sympy numpy scipy pint mendeleev biopython pandas networkx scikit-learn matplotlib
 ```
 
 Name lookups use PubChem, so `pubchem.ncbi.nlm.nih.gov` must be reachable (in Claude Code cloud environments, add it to the allowed hosts).
