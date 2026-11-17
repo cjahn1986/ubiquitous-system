@@ -1,26 +1,27 @@
-# Chemist agent for Claude Code
+# Science agents for Claude Code
 
-A Claude Code subagent with expert-level coverage of every branch of chemistry, plus a small computational toolkit it uses to check numbers and structures instead of recalling them.
+Claude Code subagents for chemistry and for botany / molecular biology / pharmacology, plus a small computational toolkit they use to check numbers and structures instead of recalling them.
 
 ## Contents
 
 | Path | What it is |
 |---|---|
-| `.claude/agents/chemist.md` | The `chemist` subagent: scope, working method, safety limits, output style |
+| `.claude/agents/chemist.md` | The `chemist` subagent: every branch of chemistry |
+| `.claude/agents/botanist-pharmacologist.md` | The `botanist-pharmacologist` subagent: botany, ethnobotany, phytochemistry, molecular biology, pharmacology and toxicology |
 | `.claude/skills/chem-tools/SKILL.md` | The `chem-tools` skill: tells Claude when and how to use the toolkit |
 | `.claude/skills/chem-tools/chemtool.py` | The toolkit script |
 
 ## Setup
 
 ```bash
-pip install rdkit pubchempy sympy numpy scipy pint mendeleev
+pip install rdkit pubchempy sympy numpy scipy pint mendeleev biopython pandas
 ```
 
 Name lookups use PubChem, so `pubchem.ncbi.nlm.nih.gov` must be reachable (in Claude Code cloud environments, add it to the allowed hosts).
 
 ## Use
 
-Open this repo in Claude Code and ask, e.g. *"Have the chemist agent explain the mechanism of the Diels–Alder reaction."*
+Open this repo in Claude Code and ask, e.g. *"Have the chemist agent explain the mechanism of the Diels–Alder reaction"* or *"Ask the botanist-pharmacologist how hyperforin in St John's wort causes drug interactions."*
 To make the agent available in every project, copy `.claude/agents/` and `.claude/skills/` into `~/.claude/`.
 
 ### Toolkit commands
