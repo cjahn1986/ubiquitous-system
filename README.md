@@ -6,6 +6,8 @@ Claude Code subagents for chemistry, for botany / molecular biology / pharmacolo
 
 | Path | What it is |
 |---|---|
+| `.claude/agents/conductor.md` | The `conductor`: routes questions to the three specialists, combines their answers, and turns them into the simplest explanation and process. **Default main agent in this repo** (via `.claude/settings.json`) |
+| `.claude/settings.json` | Sets `"agent": "conductor"`; remove that line to get a plain Claude session |
 | `.claude/agents/chemist.md` | The `chemist` subagent: every branch of chemistry |
 | `.claude/agents/plant-visionary.md` | The `plant-visionary` subagent: visionary world expert on *Papaver somniferum* and the Papaveraceae, *Cannabis* and the Cannabaceae, *Nicotiana* and the Solanaceae |
 | `.claude/agents/botanist-pharmacologist.md` | The `botanist-pharmacologist` subagent: botany, ethnobotany, phytochemistry, molecular biology, pharmacology and toxicology |
@@ -20,7 +22,14 @@ pip install rdkit pubchempy sympy numpy scipy pint mendeleev biopython pandas
 
 Name lookups use PubChem, so `pubchem.ncbi.nlm.nih.gov` must be reachable (in Claude Code cloud environments, add it to the allowed hosts).
 
+## Network
+
+Live database lookups need these hosts reachable (in Claude Code cloud environments, add them to the allowed hosts): `pubchem.ncbi.nlm.nih.gov`, `eutils.ncbi.nlm.nih.gov`, `blast.ncbi.nlm.nih.gov`, `rest.uniprot.org`, `www.ebi.ac.uk` (ChEMBL), `rest.kegg.jp`, `data.rcsb.org` (PDB), `api.gbif.org`, `clinicaltrials.gov`, `webbook.nist.gov`, `en.wikipedia.org`.
+Kew POWO and the IUPHAR Guide to Pharmacology API refuse scripted requests; the agents use GBIF, ChEMBL or web search instead.
+
 ## Use
+
+Open this repo in Claude Code and just ask: the conductor answers, calling specialists as needed. Elsewhere, start it with `claude --agent conductor`.
 
 Open this repo in Claude Code and ask, e.g. *"Have the chemist agent explain the mechanism of the Diels–Alder reaction"* or *"Ask the botanist-pharmacologist how hyperforin in St John's wort causes drug interactions."*
 To make the agent available in every project, copy `.claude/agents/` and `.claude/skills/` into `~/.claude/`.
