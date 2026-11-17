@@ -24,10 +24,12 @@ lookups need a connection; the tools themselves don't).
 
 ## What to beta-test
 
-**Learning Engine** (`learning-engine.html`)
-- Type what you're learning; drag the target-retention and ease sliders.
-- Hit "got it" / "missed it" — the interval ladder and half-life should respond.
-- Check the massed-vs-spaced panel tells the honest story.
+**Pattern Tracker** (`pattern-tracker.html`)
+- Click "Load example data" — trends, a ~weekly cycle, a sleep↔mood correlation, and an
+  anomaly should appear under "Patterns found".
+- Add your own metric; log a few entries; or import a CSV of real data.
+- Check the honesty: cycles/correlations carry a p-value, and correlation is flagged
+  "worth investigating", never "X causes Y".
 
 **Node Explorer** (`node-explorer.html`) — the heart of it
 - Enter a concept (or 🎲 Surprise). **Tell me which of the four source chips turn green.**

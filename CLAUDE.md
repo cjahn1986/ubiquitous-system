@@ -26,8 +26,8 @@ README.md            human-facing overview
 ## Tools (in `tools/`, open the file in a browser)
 - **index.html** — hub: launches the tools, lists the agents, holds a shared
   "tracked concepts" store (localStorage) with JSON export/import. No lock-in.
-- **learning-engine.html** — forgetting curve + spaced-repetition schedule; the
-  forgetting curve, spacing effect, testing effect (simplified FSRS-style model).
+- **pattern-tracker.html** — log real-world data (any metrics) and surface trends, cycles,
+  correlations and anomalies, each tested against a null; correlation is never called causation.
 - **node-explorer.html** — pulls open knowledge nodes (Wikipedia, Wikidata, ConceptNet,
   OpenAlex) and generates **known / adjacent / theoretic** uses. Runs client-side; a
   blocked source degrades gracefully. In-session, only Wikipedia + the allow-listed science

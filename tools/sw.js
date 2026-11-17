@@ -1,6 +1,6 @@
 // Ubiquitous System — service worker (offline app shell)
-const CACHE = 'ubiq-v1';
-const ASSETS = ['index.html', 'learning-engine.html', 'node-explorer.html',
+const CACHE = 'ubiq-v2';
+const ASSETS = ['index.html', 'pattern-tracker.html', 'node-explorer.html',
                 'decision-matrix.html', 'manifest.webmanifest', 'icon.svg'];
 
 self.addEventListener('install', e => {
