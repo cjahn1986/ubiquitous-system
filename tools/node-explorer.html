@@ -50,7 +50,8 @@
   <p class="sub">Point it at anything you're tracking. It pulls from open knowledge <b>nodes</b> — traditional and outside-the-box — and turns them into <b>variable uses</b>: known, adjacent, and theoretic.</p>
 
   <div class="bar">
-    <input id="q" type="text" value="Photosynthesis" placeholder="a concept, topic, thing you're learning…">
+    <input id="q" type="text" value="Photosynthesis" list="concepts" placeholder="a concept, topic, thing you're learning…">
+    <datalist id="concepts"></datalist>
     <button class="go" id="go">Explore</button>
     <button id="lucky">🎲 Surprise</button>
   </div>
@@ -99,6 +100,8 @@
 const $=id=>document.getElementById(id);
 const setSrc=(s,st)=>{const el=document.querySelector(`.src[data-s="${s}"]`);el.className='src '+st;};
 const SRCCOL={wiki:'var(--wiki)',wd:'var(--wd)',cn:'var(--cn)',oa:'var(--oa)'};
+function saveConcept(n){try{const k='ube.concepts',s=new Set(JSON.parse(localStorage.getItem(k)||'[]'));if(n&&n.trim()){s.add(n.trim());localStorage.setItem(k,JSON.stringify([...s]));}}catch(e){}}
+function loadConcepts(){try{const dl=$('concepts');if(!dl)return;const a=JSON.parse(localStorage.getItem('ube.concepts')||'[]');dl.innerHTML=a.map(x=>`<option value="${x.replace(/"/g,'&quot;')}">`).join('');}catch(e){}}
 
 async function jget(url,ms=9000){
   const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);
@@ -248,12 +251,13 @@ async function run(){
   const seen=new Set(),uniq=nodes.filter(n=>{const k=n.label.toLowerCase();if(seen.has(k))return false;seen.add(k);return true;});
   drawGraph(wiki?wiki.title:q, uniq);
   renderUses(wiki?wiki.title:q, data);
+  saveConcept(wiki?wiki.title:q); loadConcepts();
 }
 $('go').onclick=run; $('q').addEventListener('keydown',e=>{if(e.key==='Enter')run();});
 $('lucky').onclick=()=>{const s=['Mycelium','Fermentation','Birdsong','Origami','Tidal power','Slime mold',
   'Antibiotics','Cymatics','Phyllotaxis','Swarm intelligence','Graphene','Circadian rhythm'];
   $('q').value=s[Math.floor(Math.random()*s.length)];run();};
-run();
+loadConcepts(); run();
 </script>
 </body>
 </html>

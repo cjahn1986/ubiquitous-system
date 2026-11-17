@@ -182,6 +182,9 @@ function draw2(){
   $('sEnd').textContent=Math.round(spaced[spaced.length-1][1]*100)+'%';
 }
 
+function saveConcept(n){try{const k='ube.concepts',s=new Set(JSON.parse(localStorage.getItem(k)||'[]'));if(n&&n.trim()){s.add(n.trim());localStorage.setItem(k,JSON.stringify([...s]));}}catch(e){}}
+$('name').addEventListener('change',e=>saveConcept(e.target.value));
+$('bGot').addEventListener('click',()=>saveConcept($('name').value));
 function drawAll(){draw1();draw2();}
 drawAll();
 addEventListener('resize',drawAll);

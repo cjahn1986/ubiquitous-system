@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ubiquitous System — pattern & knowledge tools</title>
+<style>
+  :root{ --bg:#f7f7f8; --card:#fff; --ink:#1a1a1e; --muted:#6b6b76; --line:#e5e5ea; --bg2:#f0f0f3;
+    --accent:#3b6efe; --good:#1a9d6a; --warn:#c2740f;}
+  @media(prefers-color-scheme:dark){ :root{ --bg:#0f0f12; --card:#17171c; --ink:#ececf0; --muted:#9a9aa6;
+    --line:#2a2a33; --bg2:#1c1c22; --accent:#6b93ff; --good:#3ac08a; --warn:#eaa14b;}}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:900px;margin:0 auto;padding:30px 18px 60px}
+  h1{font-size:25px;margin:0 0 3px} .sub{color:var(--muted);margin:0 0 24px}
+  h2{font-size:16px;margin:26px 0 12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-size:12.5px}
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:640px){.cards{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;text-decoration:none;color:inherit;display:block}
+  a.card:hover{border-color:var(--accent)}
+  .card h3{margin:0 0 5px;font-size:17px} .card p{margin:0;color:var(--muted);font-size:13.5px}
+  .card .go{color:var(--accent);font-size:13px;font-weight:600;margin-top:10px;display:inline-block}
+  .agent{background:var(--bg2)} .agent h3{font-size:15px} .agent .r{font-size:12px;color:var(--muted);margin-top:4px}
+  .mem{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:8px}
+  .concepts{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}
+  .c{background:var(--bg2);border:1px solid var(--line);border-radius:20px;padding:4px 11px;font-size:13px}
+  .c b{cursor:pointer;color:var(--muted);margin-left:6px}
+  .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:9px;padding:8px 13px;font-size:13.5px;font-weight:600;cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  .empty{color:var(--muted);font-size:13.5px}
+  footer{color:var(--muted);font-size:12.5px;margin-top:26px;line-height:1.5} footer b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Ubiquitous System</h1>
+  <p class="sub">A small workshop for seeing the structure under things — and putting it to use. Open data, no keys, runs in your browser.</p>
+
+  <h2>Tools</h2>
+  <div class="cards">
+    <a class="card" href="learning-engine.html">
+      <h3>🧠 Learning Engine</h3>
+      <p>Your forgetting curve and the spaced-repetition schedule that beats it. Track what you're learning; keep it.</p>
+      <span class="go">Open →</span>
+    </a>
+    <a class="card" href="node-explorer.html">
+      <h3>🕸️ Node Explorer</h3>
+      <p>Pulls open knowledge nodes (Wikipedia, Wikidata, ConceptNet, OpenAlex) and turns them into known, adjacent & theoretic uses.</p>
+      <span class="go">Open →</span>
+    </a>
+  </div>
+
+  <h2>Shared memory — your tracked concepts</h2>
+  <div class="mem">
+    <div id="concepts" class="concepts"></div>
+    <div class="btns">
+      <button id="exp">⤓ Export (JSON)</button>
+      <button id="imp">⤒ Import</button>
+      <button id="clr">Clear all</button>
+      <input id="file" type="file" accept="application/json" style="display:none">
+    </div>
+    <p class="empty" style="margin-top:10px">Both tools read and write this list (stored in your browser only). It's <b>yours</b> — export it anytime, import it anywhere. No lock-in.</p>
+  </div>
+
+  <h2>The agent team (in Claude Code)</h2>
+  <div class="cards">
+    <div class="card agent"><h3>🎼 conductor</h3><div class="r">Routes your question to the right specialists, then translates the answer into the simplest explanation + process.</div></div>
+    <div class="card agent"><h3>🔬 chemist</h3><div class="r">Every branch of chemistry — structures, reactions, calculations, with a verification toolkit.</div></div>
+    <div class="card agent"><h3>🌿 botanist-pharmacologist</h3><div class="r">Plants, genes, cells, and how compounds act in the body — evidence-graded.</div></div>
+    <div class="card agent"><h3>🌺 plant-visionary</h3><div class="r">Poppy, cannabis & tobacco in depth; history, culture, bold hypotheses.</div></div>
+    <div class="card agent"><h3>🧩 pattern-theorist</h3><div class="r">The structure under anything — patterns, networks, scaling, cycles — and whether a pattern is real or a fooling one.</div></div>
+  </div>
+
+  <footer>
+    <b>How it fits together:</b> the agents live in Claude Code (ask the <b>conductor</b>); the two browser tools are where you <i>track</i> and <i>explore</i>. The shared memory ties them: what you learn becomes what you explore. <b>Privacy:</b> everything here is local to your browser and the open public APIs — no account, no keys, nothing phoned home.
+  </footer>
+</div>
+<script>
+const K='ube.concepts';
+const get=()=>{try{return JSON.parse(localStorage.getItem(K)||'[]')}catch(e){return[]}};
+const set=a=>localStorage.setItem(K,JSON.stringify([...new Set(a)].filter(Boolean)));
+function render(){
+  const a=get(),el=document.getElementById('concepts');
+  if(!a.length){el.innerHTML='<span class="empty">Nothing tracked yet — open a tool and add something.</span>';return;}
+  el.innerHTML=a.map(c=>`<span class="c">${c.replace(/</g,'&lt;')}<b data-c="${c.replace(/"/g,'&quot;')}">✕</b></span>`).join('');
+  el.querySelectorAll('b').forEach(b=>b.onclick=()=>{set(get().filter(x=>x!==b.dataset.c));render();});
+}
+document.getElementById('exp').onclick=()=>{
+  const blob=new Blob([JSON.stringify({concepts:get(),exported:new Date().toISOString()},null,2)],{type:'application/json'});
+  const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='ubiquitous-concepts.json';a.click();URL.revokeObjectURL(u);
+};
+document.getElementById('imp').onclick=()=>document.getElementById('file').click();
+document.getElementById('file').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);const list=Array.isArray(d)?d:(d.concepts||[]);set([...get(),...list]);render();}catch(x){alert('Could not read that file.')}};r.readAsText(f);};
+document.getElementById('clr').onclick=()=>{if(confirm('Clear all tracked concepts?')){set([]);render();}};
+render();
+</script>
+</body>
+</html>
