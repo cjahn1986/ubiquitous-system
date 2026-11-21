@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Research Hub</title>
+<meta name="description" content="Archive, cross-reference, classics, translation matrices, etymology, mind maps, data and research trails — offline, in your browser.">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icon.svg">
+<meta name="theme-color" content="#3b6efe">
+<link rel="stylesheet" href="style.css">
+<script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));</script>
+</head>
+<body>
+<header class="top">
+  <button id="navbtn" class="navbtn" aria-label="Menu">☰</button>
+  <a class="brand" href="#/archive">🏛️ <span>Research Hub</span></a>
+  <input id="gsearch" type="search" placeholder="Search everything…  (Enter)" aria-label="Search the archive">
+  <div id="trailpill" class="trailpill"></div>
+</header>
+<nav id="nav">
+  <a href="#/archive" data-v="archive">🗄️ <span>Archive</span></a>
+  <a href="#/search" data-v="search">🔍 <span>Search</span></a>
+  <a href="#/web" data-v="web">🌐 <span>Web</span></a>
+  <a href="#/classics" data-v="classics">🏺 <span>Classics</span></a>
+  <a href="#/matrix" data-v="matrix">⇆ <span>Translation</span></a>
+  <a href="#/etym" data-v="etym">🌱 <span>Etymology</span></a>
+  <a href="#/map" data-v="map">🧠 <span>Mind map</span></a>
+  <a href="#/data" data-v="data">📊 <span>Data</span></a>
+  <a href="#/trails" data-v="trails">🧵 <span>Trails</span></a>
+  <a href="#/settings" data-v="settings">⚙️ <span>Hub & agents</span></a>
+  <a href="../index.html" class="back">← <span>Workshop</span></a>
+</nav>
+<main id="view"></main>
+<div class="dropzone">Drop files to add them to the archive</div>
+
+<script src="vendor/pdf.min.js"></script>
+<script src="data/classics-catalog.js"></script>
+<script src="js/core.js"></script>
+<script src="js/tei.js"></script>
+<script src="js/web.js"></script>
+<script src="js/etym.js"></script>
+<script src="js/app.js"></script>
+<script src="js/views-archive.js"></script>
+<script src="js/views-classics.js"></script>
+<script src="js/views-etym-map.js"></script>
+<script src="js/views-data-trails.js"></script>
+<script>RH.boot();</script>
+</body>
+</html>

@@ -281,7 +281,9 @@ $('go').onclick=run; $('q').addEventListener('keydown',e=>{if(e.key==='Enter')ru
 $('lucky').onclick=()=>{const s=['Mycelium','Fermentation','Birdsong','Origami','Tidal power','Slime mold',
   'Antibiotics','Cymatics','Phyllotaxis','Swarm intelligence','Graphene','Circadian rhythm'];
   $('q').value=s[Math.floor(Math.random()*s.length)];run();};
-loadConcepts(); run();
+loadConcepts();
+try{const q0=new URLSearchParams(location.search).get('q');if(q0)$('q').value=q0;}catch(e){}
+run();
 </script>
 </body>
 </html>
