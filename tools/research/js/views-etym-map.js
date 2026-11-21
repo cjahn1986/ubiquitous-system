@@ -46,7 +46,8 @@ V.etym = async function (main, r) {
   const etyms = first.etyms || [];
   if (first.defs?.length) side.append(h('h4', {}, 'Meaning'), h('ol', { class: 'defs' }, first.defs.map(d => h('li', {}, d))));
   etyms.forEach((et, i) => {
-    side.append(h('h4', {}, etyms.length > 1 ? `Etymology ${i + 1}` : 'Etymology'), h('p', { class: 'etext', 'data-sel': '' }, et.text || '—'));
+    const summary = et.text || et.rels.filter(x => x.word).map(x => `${x.type} ${RH.langName(x.lang)} ${x.word}${x.gloss ? ` (“${x.gloss}”)` : ''}`).join('; ') || '—';
+    side.append(h('h4', {}, etyms.length > 1 ? `Etymology ${i + 1}` : 'Etymology'), h('p', { class: 'etext', 'data-sel': '' }, summary), first.src === 'engine' ? h('p', { class: 'muted small' }, 'Source: your offline etymology engine data.') : h('p', { class: 'muted small' }, 'Source: Wiktionary (cached in this browser).'));
     const grp = t => et.rels.filter(x => x.type === t && x.word);
     const chips = (title, arr) => arr.length ? h('div', {}, h('small', { class: 'muted' }, title), h('div', { class: 'chips' }, arr.map(x => h('a', { class: 'chip', style: `border-color:${FAMILY(x.lang)}`, href: '#/etym?' + new URLSearchParams({ w: x.word, l: x.lang }) }, `${x.word}`, h('small', {}, ' ' + RH.langName(x.lang)))))) : '';
     side.append(chips('Root', grp('root')), chips('Built from', grp('parts')), chips('Cognates (relatives in other languages)', [...grp('cognate'), ...grp('compare')]), chips('Doublets', grp('doublet of')));
@@ -246,15 +247,18 @@ RH.findGaps = function () {
   const noBridge = nodes.filter(n => (RH.isOld(n.era) || RH.isNew(n.era)) && ![...nb.get(n.id)].some(x => { const o = S.nodes.get(x); return o && (RH.isOld(n.era) ? RH.isNew(o.era) : RH.isOld(o.era)); }));
   // 4) unmapped: names / terms recurring across ≥2 sources, not on the map
   const onMap = new Set(nodes.map(n => RH.fold(n.label)));
-  const names = new Map();
+  const names = new Map(); const lower = new Map(); const multi = S.docs.size > 1;
   for (const doc of S.docs.values()) {
     const seen = new Set(); const txt = RH.docText(doc).slice(0, 400000);
-    for (const m of txt.matchAll(/(?<![.!?]\s)\b([A-ZΑ-Ω][\p{Ll}\p{M}]{2,}(?:\s+(?:of\s+|the\s+)?[A-ZΑ-Ω][\p{Ll}\p{M}]{2,}){0,2})/gu)) {
-      const k = m[1]; const f = RH.fold(k); if (onMap.has(f) || f.length < 4 || /^(the|this|that|these|there|then|when|what|which|chapter|book|page|section|and|but|for|from|with|they|their|his|her)\b/.test(f)) continue;
+    for (const m of txt.matchAll(/(?<=[\s(“"'])([a-z\u03b1-\u03c9][\p{Ll}\p{M}]{3,})/gu)) { const f = RH.fold(m[1]); lower.set(f, (lower.get(f) || 0) + 1); }
+    for (const m of txt.matchAll(/\b([A-Z\u0391-\u03A9][\p{Ll}\p{M}]{3,}(?:\s+(?:of\s+|the\s+)?[A-Z\u0391-\u03A9][\p{Ll}\p{M}]{3,}){0,2})(?![\p{L}.])/gu)) {
+      const k = m[1]; const f = RH.fold(k); if (onMap.has(f)) continue;
       let e = names.get(f); if (!e) names.set(f, e = { label: k, n: 0, docs: 0 }); e.n++; if (!seen.has(f)) { seen.add(f); e.docs++; }
     }
   }
-  const unmapped = [...names.values()].filter(x => x.docs >= 2 || x.n >= 8).sort((a, b) => b.docs * 10 + b.n - (a.docs * 10 + a.n)).slice(0, 25);
+  // a name: capitalised far more often than not, and (if you have several sources) recurring across them
+  const unmapped = [...names].filter(([f, x]) => (lower.get(f) || 0) < 0.3 * x.n && (multi ? x.docs >= 2 : x.n >= 5)).map(([, x]) => x)
+    .sort((a, b) => b.docs * 10 + b.n - (a.docs * 10 + a.n)).slice(0, 25);
   const isolated = nodes.filter(n => !nb.get(n.id).size);
   const openQs = [...S.trails.values()].flatMap(t => t.steps.filter(s => (s.kind === 'question' || s.kind === 'hypothesis') && !s.resolved).map(s => ({ t, s })));
   return { comention: comention.slice(0, 20), triads: triads.slice(0, 15), bridges, noBridge: noBridge.slice(0, 20), unmapped, isolated: isolated.slice(0, 20), openQs: openQs.slice(0, 15) };

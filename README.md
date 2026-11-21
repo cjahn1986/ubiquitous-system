@@ -1,3 +1,29 @@
+# Ubiquitous System
+
+## 🏛️ Research Hub — `tools/research/index.html`
+
+A research workspace for connecting modern subjects with ancient ones across disciplines, and finding what lies between them. Runs in your browser: offline-capable, open data, no keys, and your data stays with you.
+
+| Piece | What it does |
+|---|---|
+| **Archive** | Drop in PDFs, text, HTML, TEI XML, notes. Text is extracted and indexed at the passage level. |
+| **Search & cross-reference** | Accent-insensitive search across everything (λογος finds λόγος); "related in your archive"; select any passage → find it elsewhere. |
+| **Web** | Wikipedia, Wikidata, Wiktionary, OpenAlex, Crossref, Internet Archive, Project Gutenberg. Every result is checked against your archive; import with one click. |
+| **Classics** | 2,275 Greek & Latin works (Perseus + First1KGreek, CC BY-SA), 807 with English, loaded on demand. |
+| **Translation matrix** | Original and English side by side, aligned by citation. Click a word for grammar, meaning, its likely English counterpart, dictionaries, etymology. Word-by-word interlinear per line. |
+| **Etymology** | Lineages and cognates from Wiktionary, cached offline; import slot for the **Offline Etymology Engine**. |
+| **Mind map** | Concepts, people, places, texts, words, events, open questions, colored by type, era or discipline. **Gap finder:** pairs your sources mention together but you haven't linked, structural holes, ancient↔modern bridges, recurring names not yet mapped. |
+| **Data** | Data points with units and evidence on one BCE→CE timeline; CSV for the Pattern Tracker. |
+| **Trails** | Each investigation is a line: question → sources → findings → hypotheses → conclusions. While a trail is active, everything you save is logged to it. |
+
+**Run it:** `cd tools && python3 -m http.server 8000`, then open http://localhost:8000/research/ (or use the GitHub Pages URL). Select text anywhere for the action bar.
+
+**With the agents:** in the hub go to *Hub & agents → Export everything* and save the file as `research/hub-export.json` in this repo. Then ask the conductor in Claude Code. Agents write `research/hub-import-<agent>.json`, which you import back. `research/` is git-ignored.
+
+**Licences:** classical texts are CC BY-SA (Perseus Digital Library, Open Greek and Latin); pdf.js is Apache-2.0 (`tools/research/vendor/pdfjs-LICENSE`). The Loeb Classical Library itself is copyrighted, but pre-1929 volumes are public domain and importable from the Internet Archive.
+
+---
+
 # Science agents for Claude Code
 
 Claude Code subagents for chemistry, for botany / molecular biology / pharmacology, and for poppy, cannabis and tobacco, plus a small computational toolkit they use to check numbers and structures instead of recalling them.
@@ -6,6 +32,8 @@ Claude Code subagents for chemistry, for botany / molecular biology / pharmacolo
 
 | Path | What it is |
 |---|---|
+| `.claude/agents/{archivist,cross-referencer,web-scout,classicist,etymologist,cartographer,data-steward,trail-keeper}.md` | The Research Hub team, one per piece, coordinated by the conductor |
+| `scripts/hub.py`, `scripts/classics.py`, `scripts/etym.py` | The research team's hands: read the hub export / write imports; fetch and align classical texts; offline etymology database |
 | `.claude/agents/pattern-theorist.md` | The `pattern-theorist`: the science of patterns across nature, society, math and information — complexity, fractals, networks, chaos, scaling laws, morphogenesis, cycles, biomimicry — with the discipline to tell a real pattern from a fooling one |
 | `.claude/agents/conductor.md` | The `conductor`: routes questions to the three specialists, combines their answers, and turns them into the simplest explanation and process. **Default main agent in this repo** (via `.claude/settings.json`) |
 | `.claude/settings.json` | Sets `"agent": "conductor"`; remove that line to get a plain Claude session |

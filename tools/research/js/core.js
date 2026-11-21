@@ -24,7 +24,9 @@ function h(tag, attrs = {}, ...kids) {
   return el;
 }
 function toast(msg, ms = 2600) {
-  const t = h('div', { class: 'toast' }, msg); document.body.append(t);
+  let box = document.querySelector('.toasts'); if (!box) { box = h('div', { class: 'toasts', 'aria-live': 'polite' }); document.body.append(box); }
+  while (box.children.length > 2) box.firstChild.remove();
+  const t = h('div', { class: 'toast' }, msg); box.append(t);
   setTimeout(() => t.classList.add('show'), 10);
   setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, ms);
 }

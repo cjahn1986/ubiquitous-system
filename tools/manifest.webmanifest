@@ -1,7 +1,7 @@
 {
   "name": "Ubiquitous System",
   "short_name": "UbiqSystem",
-  "description": "A workshop for seeing the structure under things — and putting it to use. Learning engine, knowledge-node explorer, decision matrix.",
+  "description": "A workshop for seeing the structure under things — and putting it to use. Research hub, knowledge-node explorer, pattern tracker, decision matrix.",
   "start_url": "index.html",
   "scope": "./",
   "display": "standalone",
