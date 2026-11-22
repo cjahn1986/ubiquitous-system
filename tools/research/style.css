@@ -163,3 +163,11 @@ button.more { display:block; margin:14px auto 0 }
 .bridgepill .bp { display:inline-flex; gap:3px; align-items:center; border-radius:20px; padding:4px 11px; font-size:13px; border:1px solid var(--line); background:var(--bg2); white-space:nowrap; cursor:default }
 .bridgepill .bp.ok { border-color:var(--good) } .bridgepill .bp.off { opacity:.7; border-color:var(--warn) }
 @media (max-width: 820px) { .bridgepill .bp span { display:none } }
+
+/* verdicts & requests */
+.mlink.sup { stroke-width:3.2; stroke-opacity:.95 } .mlink.plaus { stroke-dasharray:2 4 } .mlink.unsup { stroke-dasharray:1 6; stroke-opacity:.6 }
+.mlink.cont { stroke:var(--bad); stroke-dasharray:7 3; stroke-opacity:.9 } .mlink.ref { stroke:var(--bad); stroke-dasharray:1 4; stroke-opacity:.4 }
+.mnode.req circle, .mnode.req rect { stroke:var(--accent2); stroke-width:3; stroke-dasharray:3 2 } .mnode.cont circle { stroke:var(--bad); stroke-width:2.5 } .mnode.ref { opacity:.55 }
+.legend .lsep { width:1px; height:12px; background:var(--line) } .legend svg { vertical-align:middle; margin-right:3px }
+.badge.st-supported { color:var(--good); border-color:var(--good) } .badge.st-contested, .badge.st-refuted { color:var(--bad); border-color:var(--bad) } .badge.st-plausible { color:var(--accent); border-color:var(--accent) }
+.verdict { margin:3px 0 4px; padding:4px 8px; border-left:3px solid var(--accent2); background:var(--bg2); border-radius:0 6px 6px 0 }

@@ -1,5 +1,5 @@
 // Ubiquitous System — service worker (offline app shell)
-const CACHE = 'ubiq-v4';
+const CACHE = 'ubiq-v5';
 const ASSETS = ['index.html', 'pattern-tracker.html', 'node-explorer.html',
                 'decision-matrix.html', 'manifest.webmanifest', 'icon.svg',
                 // Research Hub

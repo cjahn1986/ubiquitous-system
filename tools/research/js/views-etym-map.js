@@ -112,18 +112,21 @@ V.map = async function (main, r) {
   if (colorBy === 'type') legend.append(...Object.entries(RH.NODE_TYPES).filter(([k]) => nodes.some(n => n.type === k)).map(([k, v]) => h('span', {}, h('i', { style: `background:${v[1]}` }), v[0])));
   else if (colorBy === 'era') legend.append(...RH.ERAS.filter(([k]) => nodes.some(n => n.era === k)).map(([k, v]) => h('span', {}, h('i', { style: `background:${eraCol(k)}` }), v)));
   else legend.append(...discs.map((d, i) => h('span', {}, h('i', { style: `background:${PAL[i % PAL.length]}` }), d)));
+  const used = Object.keys(RH.STATUS).filter(k => links.some(l => l.status === k));
+  if (used.length) legend.append(h('span', { class: 'lsep' }), ...used.map(k => h('span', { title: RH.STATUS[k][1], html: `<svg width="22" height="8" aria-hidden="true"><line x1="1" y1="4" x2="21" y2="4" class="mlink ${RH.STATUS[k][0]}"/></svg>${k}` })));
   // place new nodes
   const P = new Map(); nodes.forEach((n, i) => { const a = i * 2.39996; P.set(n.id, { x: n.x ?? W / 2 + Math.cos(a) * 30 * Math.sqrt(i + 1), y: n.y ?? H / 2 + Math.sin(a) * 30 * Math.sqrt(i + 1), vx: 0, vy: 0, fixed: !!n.pinned, n }); });
   const deg = new Map(); links.forEach(l => { deg.set(l.from, (deg.get(l.from) || 0) + 1); deg.set(l.to, (deg.get(l.to) || 0) + 1); });
   const lineEls = links.map(l => {
     const ln = document.createElementNS(NS, 'line'); const a = S.nodes.get(l.from), b = S.nodes.get(l.to);
     const bridge = (RH.isOld(a.era) && RH.isNew(b.era)) || (RH.isNew(a.era) && RH.isOld(b.era));
-    ln.setAttribute('class', 'mlink' + (bridge ? ' bridge' : '') + (l.status === 'hypothesis' ? ' hyp' : '')); g.append(ln);
+    ln.setAttribute('class', 'mlink' + (bridge ? ' bridge' : '') + (RH.STATUS[l.status] ? ' ' + RH.STATUS[l.status][0] : '') + (l.req ? ' req' : '')); g.append(ln);
+    if (l.status || l.verdict) { const ti = document.createElementNS(NS, 'title'); ti.textContent = [l.label, l.status && RH.STATUS[l.status]?.[1], l.verdict?.note].filter(Boolean).join(' · '); ln.append(ti); }
     let tx = null; if (l.label) { tx = document.createElementNS(NS, 'text'); tx.setAttribute('class', 'mlabel'); tx.textContent = l.label; g.append(tx); }
     return { l, ln, tx };
   });
   const nodeEls = nodes.map(n => {
-    const gg = document.createElementNS(NS, 'g'); gg.setAttribute('class', 'mnode' + (trailIds && !trailIds.has(n.id) ? ' dim' : '') + (n.status === 'hypothesis' ? ' hyp' : '')); gg.dataset.id = n.id;
+    const gg = document.createElementNS(NS, 'g'); gg.setAttribute('class', 'mnode' + (trailIds && !trailIds.has(n.id) ? ' dim' : '') + (RH.STATUS[n.status] ? ' ' + RH.STATUS[n.status][0] : '') + (n.req ? ' req' : '')); gg.dataset.id = n.id;
     const rad = 7 + Math.min(14, Math.sqrt(deg.get(n.id) || 0) * 4);
     const c = document.createElementNS(NS, n.type === 'question' ? 'rect' : 'circle');
     if (n.type === 'question') { c.setAttribute('x', -rad); c.setAttribute('y', -rad); c.setAttribute('width', rad * 2); c.setAttribute('height', rad * 2); c.setAttribute('rx', 4); c.setAttribute('transform', 'rotate(45)'); } else c.setAttribute('r', rad);
@@ -202,10 +205,12 @@ function showNode(n, panel) {
   panel.append(h('div', { class: 'np-h' }, h('span', { class: 'dot', style: `background:${RH.NODE_TYPES[n.type]?.[1]}` }), h('h3', {}, n.label)),
     h('p', { class: 'muted small' }, [RH.NODE_TYPES[n.type]?.[0], n.era && RH.ERAS.find(e => e[0] === n.era)?.[1], n.discipline, n.by && 'added by ' + n.by, n.status].filter(Boolean).join(' · ')),
     n.notes ? h('p', { class: 'np-notes', 'data-sel': '' }, n.notes) : '',
+    n.verdict ? h('p', { class: 'verdict small' }, `⚖️ ${n.verdict.status}: ${n.verdict.note || ''} `, h('span', { class: 'muted' }, `(${n.verdict.by}, ${String(n.verdict.at).slice(0, 10)})`)) : '',
     h('div', { class: 'acts' },
       h('button', { class: 'sm', onclick: async () => { if (await RH.nodeDialog(n)) RH.go('map', { n: n.id, keep: 1 }); } }, '✎ Edit'),
       h('button', { class: 'sm', onclick: async () => { const m = await RH.nodeDialog({ linkTo: n.id }); if (m) { const lab = await RH.prompt('How is it related?', ''); if (lab) { const l = [...S.links.values()].find(x => x.from === n.id && x.to === m.id); if (l) { l.label = lab; await RH.save('links', l); } } RH.go('map', { n: m.id, keep: 1 }); } } }, '＋ Linked node'),
       h('button', { class: 'sm', onclick: async () => { n.pinned = !n.pinned; await RH.save('nodes', n); toast(n.pinned ? 'Pinned' : 'Unpinned'); } }, n.pinned ? '📌 Unpin' : '📌 Pin'),
+      RH.requestBtn(n, 'nodes', 'examine'), n.status ? RH.requestBtn(n, 'nodes', 'debate') : '',
       h('button', { class: 'sm danger', onclick: async () => { if (!confirm(`Delete “${n.label}” and its links?`)) return; for (const l of links) await RH.remove('links', l.id); await RH.remove('nodes', n.id); RH.go('map', { keep: 1 }); } }, 'Delete')),
     h('h4', {}, `In your archive (${mentions.length}${mentions.length === 500 ? '+' : ''} passages)`),
     mentions.length ? h('div', { class: 'rel' }, mentions.slice(0, 5).map(c => { const ch = RH.index.chunks[c]; return h('a', { class: 'relrow', href: '#/doc/' + ch.doc + '?' + new URLSearchParams({ ref: ch.ref, hl: n.label }) }, h('b', {}, S.docs.get(ch.doc)?.title + ' · ' + ch.ref), h('small', { html: RH.snippet(ch.text, RH.terms(n.label), 140) })); })) : h('p', { class: 'muted small' }, 'Not mentioned in any source yet.'),
@@ -215,7 +220,8 @@ function showNode(n, panel) {
       h('a', { class: 'chip', href: '../node-explorer.html?' + new URLSearchParams({ q: n.label }) }, '🕸️ Node Explorer'),
       h('a', { class: 'chip', href: '#', onclick: e => { e.preventDefault(); RH.trailStepDialog({ kind: 'note', text: n.label + ': ', refs: [{ t: 'node', id: n.id }] }); } }, '🧵 Trail')),
     h('h4', {}, `Connections (${links.length})`),
-    links.length ? h('div', { class: 'rel' }, links.map(l => { const o = S.nodes.get(l.from === n.id ? l.to : l.from); return h('div', { class: 'linkrow' }, h('a', { href: '#/map?' + new URLSearchParams({ n: o.id, keep: 1 }) }, (l.from === n.id ? '→ ' : '← ') + o.label), l.label ? h('small', { class: 'muted' }, ' ' + l.label) : '', l.status === 'hypothesis' ? h('span', { class: 'badge' }, 'hypothesis') : '', h('b', { class: 'x', title: 'Remove link', onclick: async () => { await RH.remove('links', l.id); RH.go('map', { n: n.id, keep: 1 }); } }, '✕')); })) : h('p', { class: 'muted small' }, 'No connections yet — use 🔗 Connect, or 🕳️ Find gaps for suggestions.'));
+    links.length ? h('div', { class: 'rel' }, links.map(l => { const o = S.nodes.get(l.from === n.id ? l.to : l.from); return h('div', { class: 'linkrow' }, h('a', { href: '#/map?' + new URLSearchParams({ n: o.id, keep: 1 }) }, (l.from === n.id ? '→ ' : '← ') + o.label), l.label ? h('small', { class: 'muted' }, ' ' + l.label) : '', l.status ? h('span', { class: 'badge st-' + l.status, title: RH.STATUS[l.status]?.[1] || '' }, l.status) : '', ' ', RH.requestBtn(l, 'links', 'debate', true), h('b', { class: 'x', title: 'Remove link', onclick: async () => { await RH.remove('links', l.id); RH.go('map', { n: n.id, keep: 1 }); } }, '✕'),
+      l.verdict ? h('div', { class: 'verdict small' }, `⚖️ ${l.verdict.note || l.verdict.status} `, h('span', { class: 'muted' }, `(${l.verdict.by}, ${String(l.verdict.at).slice(0, 10)})`)) : ''); })) : h('p', { class: 'muted small' }, 'No connections yet — use 🔗 Connect, or 🕳️ Find gaps for suggestions.'));
   const refs = (n.refs || []).filter(x => x.t === 'doc' && S.docs.get(x.id));
   if (refs.length) panel.append(h('h4', {}, 'Sources'), h('div', { class: 'rel' }, refs.map(x => h('a', { class: 'relrow', href: '#/doc/' + x.id + (x.anchor ? '?ref=' + encodeURIComponent(x.anchor) : '') }, h('b', {}, S.docs.get(x.id).title), x.anchor ? h('small', {}, x.anchor) : ''))));
 }
@@ -261,7 +267,8 @@ RH.findGaps = function () {
     .sort((a, b) => b.docs * 10 + b.n - (a.docs * 10 + a.n)).slice(0, 25);
   const isolated = nodes.filter(n => !nb.get(n.id).size);
   const openQs = [...S.trails.values()].flatMap(t => t.steps.filter(s => (s.kind === 'question' || s.kind === 'hypothesis') && !s.resolved).map(s => ({ t, s })));
-  return { comention: comention.slice(0, 20), triads: triads.slice(0, 15), bridges, noBridge: noBridge.slice(0, 20), unmapped, isolated: isolated.slice(0, 20), openQs: openQs.slice(0, 15) };
+  const awaiting = [...links.filter(l => ['hypothesis', 'contested'].includes(l.status)).map(l => ({ l })), ...nodes.filter(n => ['hypothesis', 'contested'].includes(n.status)).map(n => ({ n }))];
+  return { awaiting, comention: comention.slice(0, 20), triads: triads.slice(0, 15), bridges, noBridge: noBridge.slice(0, 20), unmapped, isolated: isolated.slice(0, 20), openQs: openQs.slice(0, 15) };
 };
 function showGaps(panel, intro) {
   panel.innerHTML = '';
@@ -269,6 +276,8 @@ function showGaps(panel, intro) {
   panel.append(h('h3', {}, '🕳️ Gaps & bridges'), h('p', { class: 'muted small' }, intro ? 'Click a node for details. Here is what your map and archive suggest is missing:' : 'Suggestions to test — not facts. Each comes with its evidence.'));
   const sec = (title, items, render, empty) => { panel.append(h('h4', {}, `${title} (${items.length})`)); panel.append(items.length ? h('div', { class: 'rel' }, items.map(render)) : h('p', { class: 'muted small' }, empty)); };
   const linkBtn = (a, b, label) => h('button', { class: 'sm', onclick: async e => { const lab = await RH.prompt(`Link “${a.label}” and “${b.label}” — how?`, label || ''); if (lab === null) return; await RH.addLink(a.id, b.id, lab, { status: 'hypothesis' }); await RH.logStep('hypothesis', `${a.label} ↔ ${b.label}${lab ? ': ' + lab : ''}`, [{ t: 'node', id: a.id }, { t: 'node', id: b.id }]); e.target.textContent = '✓ linked'; e.target.disabled = true; } }, '🔗 Link');
+  sec('Hypotheses awaiting a verdict', G.awaiting, x => x.l ? h('div', { class: 'gap' }, h('b', {}, `${S.nodes.get(x.l.from)?.label} — ${S.nodes.get(x.l.to)?.label}`), h('small', { class: 'muted' }, ` ${x.l.label || ''} · ${x.l.status}`), h('div', { class: 'acts' }, RH.requestBtn(x.l, 'links', 'debate')))
+    : h('div', { class: 'gap' }, h('a', { href: '#/map?' + new URLSearchParams({ n: x.n.id, keep: 1 }) }, x.n.label), h('small', { class: 'muted' }, ' · ' + x.n.status), h('div', { class: 'acts' }, RH.requestBtn(x.n, 'nodes', 'debate'))), 'No untested hypotheses. Links you mark as hypotheses (dashed) appear here for the advocate and skeptic.');
   sec('Mentioned together in your sources, not linked', G.comention, x => h('div', { class: 'gap' }, h('b', {}, `${x.a.label} ↔ ${x.b.label}`), h('small', { class: 'muted' }, ` ${x.c} passage${x.c > 1 ? 's' : ''}`),
     h('div', { class: 'acts' }, h('a', { class: 'chip', href: '#/search?' + new URLSearchParams({ q: `"${x.a.label}" "${x.b.label}"` }) }, 'see passages'), linkBtn(x.a, x.b))), 'Add sources and nodes — pairs that appear in the same passages show up here.');
   sec('Share neighbours but aren’t linked (structural holes)', G.triads, x => h('div', { class: 'gap' }, h('b', {}, `${x.a.label} ↔ ${x.b.label}`), h('small', { class: 'muted' }, ' both connect to ' + x.shared.slice(0, 3).map(s => s.label).join(', ')), h('div', { class: 'acts' }, linkBtn(x.a, x.b))), 'None yet.');

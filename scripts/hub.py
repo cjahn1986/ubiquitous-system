@@ -15,6 +15,8 @@ Read:
   hub.py map     [EXPORT]                        nodes and links as text
   hub.py trail   [EXPORT] [TRAIL_ID]             trails as Markdown (default: most recent)
   hub.py data    [EXPORT]                        data points
+  hub.py requests [EXPORT]                       🎓 examinations / ⚖️ debates the user asked for from the hub
+  hub.py cooccur "A" "B" [EXPORT]               are A and B mentioned together more often than chance? (null test)
 
 Write (append to an import file; created if missing):
   hub.py add node  OUT --label L [--type concept] [--era ancient] [--discipline D] [--notes N] [--status hypothesis] --by AGENT
@@ -22,6 +24,9 @@ Write (append to an import file; created if missing):
   hub.py add step  OUT --kind finding --text T [--trail ID] [--doc ID --ref R] --by AGENT
   hub.py add data  OUT --series S --value V [--unit U] [--date D] [--quote Q] [--doc ID --ref R] --by AGENT
   hub.py add doc   OUT --title T --file PATH|--text T [--author A] [--date D] [--kind text] [--era E] [--tags a,b] --by AGENT
+  hub.py add verdict OUT (--from A --to B | --node LABEL) --status supported|plausible|contested|unsupported|refuted|hypothesis
+                         --note "why (+ debate file)" --by AGENT     sets a link's/node's status; clears its request
+  hub.py add resolve OUT (--from A --to B | --node LABEL | --trail ID) --by AGENT    mark a hub request done
 
 EXPORT defaults to research/hub-export.json.
 """
@@ -29,6 +34,7 @@ import argparse, json, math, os, re, sys, time, unicodedata, uuid
 from collections import Counter, defaultdict
 
 DEFAULT = os.path.join(os.path.dirname(__file__), '..', 'research', 'hub-export.json')
+STATUSES = ('supported', 'plausible', 'contested', 'unsupported', 'refuted', 'hypothesis')
 OLD = {'deep', 'ancient', 'classical', 'late-antique', 'medieval'}
 NEW = {'early-modern', 'modern', 'contemporary'}
 STOP = set(('a an and are as at be been but by for from had has have he her his i if in into is it its of on or our she so than that the their them then there these they this to was we were what when which who will with you your not no nor do does did can could would should may might must shall upon also such only other more most some any all one two three '
@@ -266,6 +272,50 @@ def cmd_gaps(a):
         print(f'  {label[f]}: {cnt[f]}× in {len(docs_with[f])} sources')
 
 
+def cmd_requests(a):
+    ex = load(a.export); nodes = {n['id']: n for n in ex.get('nodes', [])}; icon = {'examine': '🎓 examine', 'debate': '⚖️ debate'}; out = []
+    for n in nodes.values():
+        if n.get('req'): out.append(f"{icon.get(n['req'], n['req'])}  node  “{n['label']}”  ({n.get('type', '')}, status: {n.get('status') or '—'})  requested {n.get('req_at', '')[:10]}")
+    for l in ex.get('links', []):
+        if l.get('req') and l.get('from') in nodes and l.get('to') in nodes:
+            out.append(f"{icon.get(l['req'], l['req'])}  link  “{nodes[l['from']]['label']}” —{l.get('label') or 'related'}→ “{nodes[l['to']]['label']}”  (status: {l.get('status') or '—'})  requested {l.get('req_at', '')[:10]}")
+    for t in ex.get('trails', []):
+        if t.get('req'): out.append(f"{icon.get(t['req'], t['req'])}  trail “{t['title']}” [{t['id']}]  requested {t.get('req_at', '')[:10]}")
+    print('\n'.join(out) or 'No pending requests from the hub.')
+
+
+def _log_comb(n, k): return math.lgamma(n + 1) - math.lgamma(k + 1) - math.lgamma(n - k + 1)
+
+
+def hypergeom_sf(k, N, K, n):
+    """P(X >= k) when drawing n of N items, K of which are marked"""
+    if k <= 0: return 1.0
+    hi = min(K, n); lo = max(k, n - (N - K))
+    if lo > hi: return 0.0
+    base = _log_comb(N, n)
+    return min(1.0, sum(math.exp(_log_comb(K, x) + _log_comb(N - K, n - x) - base) for x in range(lo, hi + 1)))
+
+
+def cmd_cooccur(a):
+    ix = Index(load(a.export)); N = len(ix.chunks)
+    A, B = ix.mentions(a.a), ix.mentions(a.b); both = A & B
+    da, db = {ix.chunks[i][0] for i in A}, {ix.chunks[i][0] for i in B}; dboth = da & db; D = len(ix.docs)
+    print(f'“{a.a}”: {len(A)} passages in {len(da)} sources · “{a.b}”: {len(B)} passages in {len(db)} sources · archive: {N} passages, {D} sources')
+    if len(A) < 3 or len(B) < 3:
+        print('Verdict: too few mentions to test (need at least 3 passages each). Absence of evidence here says little.'); return
+    exp = len(A) * len(B) / N; p = hypergeom_sf(len(both), N, len(A), len(B))
+    print(f'Passages mentioning both: {len(both)} (chance alone would give ~{exp:.2f}) · p = {p:.3g}')
+    if D >= 3:
+        pd = hypergeom_sf(len(dboth), D, len(da), len(db))
+        print(f'Sources mentioning both: {len(dboth)} of {D} (chance ~{len(da) * len(db) / D:.2f}) · p = {pd:.3g}')
+    verdict = ('together MORE often than chance' if p < 0.01 and len(both) > exp else 'together LESS often than chance — they may belong to separate discussions' if hypergeom_sf(len(both) + 1, N, len(A), len(B)) > 0.99 and len(both) < exp
+               else 'no clear difference from chance')
+    print(f'Verdict: {verdict}.')
+    print('Caveat: passages from the same source are not independent (a source about A mentions A many times), so treat the passage-level p as a rough guide; the source-level count is the stricter test. Co-occurrence shows association in YOUR archive, not influence or causation.')
+    for i in sorted(both)[:a.n]:
+        d, ref, t = ix.chunks[i]; print(f"  · {ix.docs[d].get('title')} {ref}: {snip(t, terms(a.a) + terms(a.b), 200)}")
+
+
 def cmd_map(a):
     ex = load(a.export); nodes = {n['id']: n for n in ex.get('nodes', [])}
     for n in nodes.values():
@@ -315,8 +365,12 @@ def cmd_add(a):
     if a.what == 'node':
         j['nodes'].append({k: v for k, v in {'id': _id('n'), 'label': a.label, 'type': a.type, 'era': a.era, 'discipline': a.discipline, 'notes': a.notes, 'status': a.status, 'by': a.by, 'refs': _refs(a), 'created': _now()}.items() if v not in (None, '')})
     elif a.what == 'link':
+        try:
+            hub_nodes = load(None).get('nodes', []) if os.path.exists(DEFAULT) else []
+        except SystemExit:
+            hub_nodes = []
         def nid(label):
-            for n in j['nodes']:
+            for n in j['nodes'] + hub_nodes:          # nodes in this file, then nodes already in the hub
                 if fold(n['label']) == fold(label): return n['id']
             n = {'id': _id('n'), 'label': label, 'type': 'concept', 'by': a.by, 'created': _now()}; j['nodes'].append(n); return n['id']
         j['links'].append({k: v for k, v in {'id': _id('l'), 'from': nid(getattr(a, 'from')), 'to': nid(a.to), 'label': a.label, 'status': a.status, 'by': a.by, 'created': _now()}.items() if v not in (None, '')})
@@ -326,6 +380,28 @@ def cmd_add(a):
         else: j['steps'].append(step)
     elif a.what == 'data':
         j['data'].append({k: v for k, v in {'id': _id('d'), 'series': a.series, 'value': a.value, 'unit': a.unit, 'date': a.date, 'quote': a.quote, 'refs': _refs(a), 'by': a.by, 'created': _now()}.items() if v not in (None, '')})
+    elif a.what in ('verdict', 'resolve'):
+        ex = load(None); nodes = ex.get('nodes', [])
+        def find(label):
+            n = next((n for n in nodes if fold(n['label']) == fold(label)), None)
+            if not n: sys.exit(f'no node labelled “{label}” in the hub')
+            return n
+        extra = {'req': ''}
+        if a.what == 'verdict':
+            if a.status not in STATUSES: sys.exit(f'--status must be one of: {", ".join(STATUSES)}')
+            extra.update(status=a.status, verdict={'status': a.status, 'note': a.note or '', 'by': a.by, 'at': _now()})
+        if a.trail:
+            if not any(t['id'] == a.trail for t in ex.get('trails', [])): sys.exit('no such trail')
+            j['trails'].append({'id': a.trail, **extra})
+        elif a.node:
+            n = find(a.node); j['nodes'].append({'id': n['id'], 'label': n['label'], **extra})
+        else:
+            if not (getattr(a, 'from') and a.to): sys.exit('give --from A --to B, or --node LABEL' + (', or --trail ID' if a.what == 'resolve' else ''))
+            A, B = find(getattr(a, 'from')), find(a.to)
+            l = next((l for l in ex.get('links', []) if {l.get('from'), l.get('to')} == {A['id'], B['id']}), None)
+            if l: j['links'].append({'id': l['id'], 'from': l['from'], 'to': l['to'], **extra})
+            elif a.what == 'verdict': j['links'].append({'id': _id('l'), 'from': A['id'], 'to': B['id'], 'label': a.label or '', 'by': a.by, 'created': _now(), **extra})
+            else: sys.exit('no link between those nodes')
     elif a.what == 'doc':
         text = open(a.file, encoding='utf-8', errors='replace').read() if a.file else a.text
         j['docs'].append({k: v for k, v in {'id': _id('doc'), 'title': a.title, 'author': a.author, 'date': a.date, 'kind': a.kind, 'era': a.era, 'tags': [t.strip() for t in (a.tags or '').split(',') if t.strip()], 'text': text, 'source': a.source, 'by': a.by, 'added': _now()}.items() if v not in (None, '', [])})
@@ -345,9 +421,11 @@ def main():
     r('search', cmd_search, lambda p: p.add_argument('query'), lambda p: p.add_argument('--n', type=int, default=15))
     r('xref', cmd_xref, lambda p: p.add_argument('--doc'), lambda p: p.add_argument('--text'), lambda p: p.add_argument('--n', type=int, default=10))
     r('trail', cmd_trail, lambda p: p.add_argument('trail', nargs='?'))
+    r('requests', cmd_requests)
+    r('cooccur', cmd_cooccur, lambda p: p.add_argument('a'), lambda p: p.add_argument('b'), lambda p: p.add_argument('--n', type=int, default=5))
     add = sp.add_parser('add'); add.set_defaults(f=cmd_add)
-    add.add_argument('what', choices=['node', 'link', 'step', 'data', 'doc']); add.add_argument('out')
-    for k in ('label', 'type', 'era', 'discipline', 'notes', 'status', 'to', 'kind', 'text', 'trail', 'doc', 'ref', 'series', 'value', 'unit', 'date', 'quote', 'title', 'file', 'author', 'tags', 'source'):
+    add.add_argument('what', choices=['node', 'link', 'step', 'data', 'doc', 'verdict', 'resolve']); add.add_argument('out')
+    for k in ('label', 'type', 'era', 'discipline', 'notes', 'status', 'to', 'kind', 'text', 'trail', 'doc', 'ref', 'series', 'value', 'unit', 'date', 'quote', 'title', 'file', 'author', 'tags', 'source', 'node', 'note'):
         add.add_argument('--' + k)
     add.add_argument('--from', dest='from'); add.add_argument('--by', required=True)
     a = ap.parse_args()

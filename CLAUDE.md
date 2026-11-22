@@ -30,7 +30,12 @@ README.md            human-facing overview
   translation; `scripts/classics.py`), **etymologist** (`scripts/etym.py`; offline engine first),
   **cartographer** (mind map, gaps, ancient↔modern bridges), **data-steward** (numbers with units,
   BCE-aware dates, quotes), **trail-keeper** (continuity: where a trail stands, open threads, logging).
+  **socratic-examiner** (finds what the user thinks they know but doesn't understand; ledger in
+  `research/examinations/`, gaps → question nodes), **advocate** + **skeptic** (debate a hypothesis; record in
+  `research/debates/`; the conductor writes the verdict with `hub.py add verdict`).
   All read `research/hub-export.json` via `scripts/hub.py` and write `research/hub-import-<agent>.json`.
+  Hub → agent requests: 🎓/⚖️ buttons set `req: 'examine'|'debate'` on a node/link/trail; `hub.py requests` lists them.
+  Link/node `status`: hypothesis | supported | plausible | contested | unsupported | refuted (+ `verdict` {note, by, at}).
   The **bridge** (`scripts/hub_bridge.py`) moves these automatically while the hub is open through it.
 
 ## Tools (in `tools/`, open the file in a browser)
@@ -62,8 +67,9 @@ README.md            human-facing overview
   a *verdict vs a null*, not just a number. `--demo` on any command to see it work.
 - **decide.py** — weighted decision matrix (SAW + TOPSIS + weight-perturbation stability);
   reports when methods disagree or the ranking is fragile. `--demo` ranks this roadmap.
-- **hub.py** — Research Hub bridge: stats | docs | text | search | xref | gaps | map | trail | data on an
-  export; `add node|link|step|data|doc OUT --by AGENT` writes importable additions.
+- **hub.py** — Research Hub data for agents: stats | docs | text | search | xref | gaps | map | trail | data |
+  requests | cooccur (hypergeometric null test of co-mention, passage + source level) on an export;
+  `add node|link|step|data|doc|verdict|resolve OUT --by AGENT` writes importable additions.
 - **hub_bridge.py** — the bridge: run it instead of `http.server`; serves `tools/` on 127.0.0.1:8000 (same origin
   as before, so browser data persists) and syncs automatically: hub → `research/hub-export.json` (debounced on
   change), `research/hub-import-*.json` → hub (settled 2 s, validated, claimed per tab, moved to

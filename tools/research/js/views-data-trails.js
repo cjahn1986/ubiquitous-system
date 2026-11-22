@@ -91,6 +91,7 @@ async function trailDetail(main, t) {
     h('div', { class: 'toolbar' },
       h('button', { class: active ? '' : 'primary', onclick: async () => { await RH.setMeta('activeTrail', active ? null : t.id); RH.rerender(); } }, active ? '⏸ Stop logging here' : '▶ Make active'),
       h('button', { onclick: () => RH.go('map', { trail: t.id }) }, '🧠 Show on map'),
+      RH.requestBtn(t, 'trails', 'examine'),
       h('button', { onclick: async () => { const v = await RH.prompt('Rename trail', t.title); if (v) { t.title = v; await RH.save('trails', t); RH.rerender(); } } }, '✎ Rename'),
       h('button', { onclick: async () => { t.status = t.status === 'closed' ? 'open' : 'closed'; await RH.save('trails', t); RH.rerender(); } }, t.status === 'closed' ? 'Reopen' : '✓ Close'),
       h('button', { onclick: () => RH.download(t.title.replace(/[^\w\- ]+/g, '').slice(0, 50) + '.md', trailMarkdown(t), 'text/markdown') }, '⤓ Markdown'),
@@ -153,7 +154,7 @@ RH.importHub = async function (j, { quiet = false } = {}) {
         continue;
       }
       const prev = S[store].get(o[key]); const merged = prev && store === 'docs' && !o.text && !o.pages && !o.segments ? { ...prev, ...o, text: prev.text, pages: prev.pages, segments: prev.segments } : { ...(prev || {}), ...o };
-      if (store === 'nodes' && !prev) { const same = RH.findNode(o.label || ''); if (same) { Object.assign(same, Object.fromEntries(Object.entries(o).filter(([k, v]) => k !== 'id' && v && !same[k]))); await RH.save('nodes', same); for (const l of j.links || []) { if (l.from === o.id) l.from = same.id; if (l.to === o.id) l.to = same.id; } bump('nodes', 'updated'); continue; } }
+      if (store === 'nodes' && !prev) { const same = RH.findNode(o.label || ''); if (same) { Object.assign(same, Object.fromEntries(Object.entries(o).filter(([k, v]) => !['id', 'by', 'created', 'x', 'y', 'pinned'].includes(k) && v && !same[k]))); await RH.save('nodes', same); for (const l of j.links || []) { if (l.from === o.id) l.from = same.id; if (l.to === o.id) l.to = same.id; } bump('nodes', 'updated'); continue; } }
       if (store === 'trails') merged.steps = merged.steps || [];
       await RH.save(store, merged); bump(store, prev ? 'updated' : 'new');
     }

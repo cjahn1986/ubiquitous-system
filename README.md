@@ -14,6 +14,7 @@ A research workspace for connecting modern subjects with ancient ones across dis
 | **Etymology** | Lineages and cognates from Wiktionary, cached offline; import slot for the **Offline Etymology Engine**. |
 | **Mind map** | Concepts, people, places, texts, words, events, open questions, colored by type, era or discipline. **Gap finder:** pairs your sources mention together but you haven't linked, structural holes, ancient↔modern bridges, recurring names not yet mapped. |
 | **Data** | Data points with units and evidence on one BCE→CE timeline; CSV for the Pattern Tracker. |
+| **Examine & debate** | 🎓 *Examine me* on a node or trail, ⚖️ *Debate* on a link: requests the agents pick up. Verdicts (supported / plausible / contested / unsupported / refuted) are drawn on the map. |
 | **Trails** | Each investigation is a line: question → sources → findings → hypotheses → conclusions. While a trail is active, everything you save is logged to it. |
 
 **Run it with the bridge** (recommended): from the repo folder run `python3 scripts/hub_bridge.py` and open http://localhost:8000/research/. Select text anywhere for the action bar.
@@ -35,6 +36,8 @@ Claude Code subagents for chemistry, for botany / molecular biology / pharmacolo
 | Path | What it is |
 |---|---|
 | `.claude/agents/{archivist,cross-referencer,web-scout,classicist,etymologist,cartographer,data-steward,trail-keeper}.md` | The Research Hub team, one per piece, coordinated by the conductor |
+| `.claude/agents/socratic-examiner.md` | Finds what you think you know but don't yet understand; your gaps become open questions on the map. Ask "examine me on X", press 🎓 in the hub, or run `claude --agent socratic-examiner` for a live session |
+| `.claude/agents/{advocate,skeptic}.md` | A debate on any hypothesis: the strongest honest case for it, the hardest fair test of it; the conductor records the verdict on the map (press ⚖️ on a link) |
 | `scripts/hub.py`, `scripts/classics.py`, `scripts/etym.py` | The research team's hands: read the hub export / write imports; fetch and align classical texts; offline etymology database |
 | `.claude/agents/pattern-theorist.md` | The `pattern-theorist`: the science of patterns across nature, society, math and information — complexity, fractals, networks, chaos, scaling laws, morphogenesis, cycles, biomimicry — with the discipline to tell a real pattern from a fooling one |
 | `.claude/agents/conductor.md` | The `conductor`: routes questions to the three specialists, combines their answers, and turns them into the simplest explanation and process. **Default main agent in this repo** (via `.claude/settings.json`) |

@@ -115,6 +115,21 @@ RH.saveDocDraft = async function (draft) {
   return d;
 };
 
+/* ---------- requests to the agents (🎓 examination, ⚖️ debate) and verdict statuses ---------- */
+RH.REQ = { examine: ['🎓', 'Examine me', 'a Socratic examination'], debate: ['⚖️', 'Debate', 'an advocate-vs-skeptic debate'] };
+RH.STATUS = { hypothesis: ['hyp', 'hypothesis — untested'], supported: ['sup', 'supported — evidence holds, objections answered'], plausible: ['plaus', 'plausible — coherent, some evidence, key evidence missing'],
+  contested: ['cont', 'contested — serious objections stand'], unsupported: ['unsup', 'unsupported — no real evidence yet'], refuted: ['ref', 'refuted — a fatal objection stands'] };
+const REQ_STORE_LABEL = o => o.label ? `“${o.label}”` : o.title ? `trail “${o.title}”` : `the link ${RH.S.nodes.get(o.from)?.label || '?'} ↔ ${RH.S.nodes.get(o.to)?.label || '?'}`;
+RH.requestBtn = function (o, store, kind, compact) {
+  const [ic, label, what] = RH.REQ[kind];
+  if (o.req === kind) return h('button', { class: 'sm on', title: `Requested ${String(o.req_at || '').slice(0, 10)} — click to cancel`, onclick: async e => { const btn = e.currentTarget; o.req = ''; await RH.save(store, o); btn.replaceWith(RH.requestBtn(o, store, kind, compact)); toast('Request cancelled'); } }, `${ic} requested`);
+  return h('button', { class: 'sm' + (compact ? ' ghost' : ''), title: `Ask the agents for ${what} on this`, onclick: async e => {
+    const btn = e.currentTarget; o.req = kind; o.req_at = RH.now(); await RH.save(store, o); btn.replaceWith(RH.requestBtn(o, store, kind, compact));
+    await RH.logStep('question', `Requested ${what} on ${REQ_STORE_LABEL(o)}`, store === 'trails' ? [] : [{ t: 'node', id: store === 'nodes' ? o.id : o.from }]);
+    toast(`${ic} Requested. In Claude Code, ask the conductor: “handle my hub requests”${RH.bridge?.on ? '' : ' (export first — the bridge isn’t running)'}`, 6500);
+  } }, compact ? ic : `${ic} ${label}`);
+};
+
 /* ---------- selection toolbar ---------- */
 let selTip = null;
 function hideTip() { selTip?.remove(); selTip = null; }
