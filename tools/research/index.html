@@ -16,6 +16,7 @@
   <button id="navbtn" class="navbtn" aria-label="Menu">☰</button>
   <a class="brand" href="#/archive">🏛️ <span>Research Hub</span></a>
   <input id="gsearch" type="search" placeholder="Search everything…  (Enter)" aria-label="Search the archive">
+  <div id="bridgepill" class="bridgepill"></div>
   <div id="trailpill" class="trailpill"></div>
 </header>
 <nav id="nav">
@@ -28,6 +29,7 @@
   <a href="#/map" data-v="map">🧠 <span>Mind map</span></a>
   <a href="#/data" data-v="data">📊 <span>Data</span></a>
   <a href="#/trails" data-v="trails">🧵 <span>Trails</span></a>
+  <a href="#/bridge" data-v="bridge">🌉 <span>Bridge</span></a>
   <a href="#/settings" data-v="settings">⚙️ <span>Hub & agents</span></a>
   <a href="../index.html" class="back">← <span>Workshop</span></a>
 </nav>
@@ -45,6 +47,7 @@
 <script src="js/views-classics.js"></script>
 <script src="js/views-etym-map.js"></script>
 <script src="js/views-data-trails.js"></script>
-<script>RH.boot();</script>
+<script src="js/bridge.js"></script>
+<script>RH.boot().then(() => RH.bridge.start());</script>
 </body>
 </html>

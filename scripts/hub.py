@@ -6,6 +6,10 @@ research/hub-export.json. Agents read it with these commands and write additions
 research/hub-import-<agent>.json, which the app's Hub & agents → Import merges.
 
 Read:
+  Add --as YOUR-AGENT-NAME to every read command: with the bridge running it applies the user's rules
+  (isolated agents get nothing; agents with hidden sources get a private view).
+
+  hub.py whoami  --as AGENT                       what the bridge lets you read and send
   hub.py stats   [EXPORT]
   hub.py docs    [EXPORT]                        list sources (id, kind, title)
   hub.py text    [EXPORT] DOC_ID [--ref R] [--around N]   print a source (or one passage ± N)
@@ -46,10 +50,37 @@ def terms(s):
     return [t for t in re.findall(r'\w+', fold(s)) if len(t) > 1 and t not in STOP and not t.isdigit() or (t.isdigit() and len(t) > 3)]
 
 
-def load(path):
+BRIDGE = os.path.join(os.path.dirname(__file__), '..', 'research', 'bridge')
+
+
+def bridge_policy():
+    try:
+        with open(os.path.join(BRIDGE, 'policy.json'), encoding='utf-8') as f: return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError): return None
+
+
+def bridge_stopped():
+    p = bridge_policy()
+    return os.path.exists(os.path.join(BRIDGE, 'STOP')) or (p is not None and not p.get('transport', True))
+
+
+def load(path, agent=None):
+    """Load the hub data this agent may read. With the bridge running, each agent reads through it:
+    an isolated agent gets nothing; an agent with hidden sources gets its private view."""
+    agent = agent or os.environ.get('HUB_AGENT')
+    if not path and agent:
+        if os.path.exists(os.path.join(BRIDGE, 'out', f'{agent}.isolated')):
+            sys.exit(f'BRIDGE: the user has isolated "{agent}" from reading the hub. Do not read files in research/ '
+                     f'to work around this — stop and tell the conductor that {agent} is isolated.')
+        view = os.path.join(BRIDGE, 'out', f'{agent}.json')
+        if os.path.exists(view): path = view
     path = path or DEFAULT
     if not os.path.exists(path):
-        sys.exit(f'No export at {path}. In the app: Hub & agents → Export everything, save as research/hub-export.json')
+        if bridge_stopped():
+            sys.exit('BRIDGE: transport is stopped by the user, so no hub data is available. Do not look for it elsewhere — '
+                     'tell the conductor the bridge is stopped.')
+        sys.exit(f'No hub data at {path}. Start the bridge (python3 scripts/hub_bridge.py serve) and open the hub through it, '
+                 'or in the hub: Hub & agents → Export everything, saved as research/hub-export.json')
     with open(path, encoding='utf-8') as f:
         return json.load(f)
 
@@ -167,19 +198,19 @@ def snip(text, ts, n=240):
 
 # ---------------- read commands ----------------
 def cmd_stats(a):
-    ex = load(a.export)
+    ex = load(a.export, a.agent)
     for k in ('docs', 'nodes', 'links', 'trails', 'data', 'etym'):
         print(f'{k:7} {len(ex.get(k, []))}')
     print('exported', ex.get('exported'))
 
 
 def cmd_docs(a):
-    for d in load(a.export).get('docs', []):
+    for d in load(a.export, a.agent).get('docs', []):
         print(f"{d['id']}\t{d.get('kind', '')}\t{d.get('era', '')}\t{d.get('title', '')}\t{len(doc_text(d))} chars")
 
 
 def cmd_text(a):
-    ex = load(a.export); d = next((x for x in ex['docs'] if x['id'] == a.doc), None)
+    ex = load(a.export, a.agent); d = next((x for x in ex['docs'] if x['id'] == a.doc), None)
     if not d: sys.exit('no such doc')
     ch = chunks_of(d)
     if a.ref:
@@ -191,7 +222,7 @@ def cmd_text(a):
 
 
 def cmd_search(a):
-    ix = Index(load(a.export)); res, ts = ix.search(a.query, a.n)
+    ix = Index(load(a.export, a.agent)); res, ts = ix.search(a.query, a.n)
     if not res: print('no passages'); return
     for s, i in res:
         d, ref, text = ix.chunks[i]
@@ -199,7 +230,7 @@ def cmd_search(a):
 
 
 def cmd_xref(a):
-    ex = load(a.export); ix = Index(ex)
+    ex = load(a.export, a.agent); ix = Index(ex)
     if a.doc:
         print('Similar sources:')
         for sim, o, shared in ix.related(a.doc, a.n):
@@ -215,7 +246,7 @@ def cmd_xref(a):
 
 
 def cmd_gaps(a):
-    ex = load(a.export); ix = Index(ex)
+    ex = load(a.export, a.agent); ix = Index(ex)
     nodes = {n['id']: n for n in ex.get('nodes', [])}; links = ex.get('links', [])
     linked = {(l['from'], l['to']) for l in links} | {(l['to'], l['from']) for l in links}
     nb = defaultdict(set)
@@ -264,8 +295,20 @@ def cmd_gaps(a):
         print(f'  {label[f]}: {cnt[f]}× in {len(docs_with[f])} sources')
 
 
+def cmd_whoami(a):
+    agent = a.agent or os.environ.get('HUB_AGENT')
+    p = bridge_policy()
+    if p is None: print('No bridge rules found (bridge never started). Reading research/hub-export.json if present.')
+    else:
+        r = {**{'send': True, 'receive': True, 'hide_docs': []}, **p.get('agents', {}).get(agent or '', {})}
+        print(f"Bridge transport: {'STOPPED' if bridge_stopped() else 'on'} · hub→agents {'on' if p.get('outbound', True) else 'off'} · agents→hub {'on' if p.get('inbound', True) else 'off'}")
+        if agent: print(f"{agent}: {'can' if r['receive'] else 'CANNOT'} read the hub · {'can send to it' if r['send'] else 'CANNOT send to it (your files will be held for the user)'} · {len(r['hide_docs'])} sources hidden from it")
+    ex = load(a.export, agent)
+    print('Readable now:', ', '.join(f'{len(ex.get(k, []))} {k}' for k in ('docs', 'nodes', 'links', 'trails', 'data', 'etym')), '· exported', ex.get('exported'))
+
+
 def cmd_map(a):
-    ex = load(a.export); nodes = {n['id']: n for n in ex.get('nodes', [])}
+    ex = load(a.export, a.agent); nodes = {n['id']: n for n in ex.get('nodes', [])}
     for n in nodes.values():
         print(f"[{n.get('type', '')}/{n.get('era', '') or '-'}] {n['label']}" + (f" — {n['notes'][:120]}" if n.get('notes') else '') + (f" ({n['status']})" if n.get('status') else ''))
     print()
@@ -275,7 +318,7 @@ def cmd_map(a):
 
 
 def cmd_trail(a):
-    ex = load(a.export); trails = sorted(ex.get('trails', []), key=lambda t: t.get('updated', ''), reverse=True)
+    ex = load(a.export, a.agent); trails = sorted(ex.get('trails', []), key=lambda t: t.get('updated', ''), reverse=True)
     if not trails: print('no trails'); return
     t = next((x for x in trails if x['id'] == a.trail), trails[0]) if a.trail else trails[0]
     print(f"# {t['title']}  [{t['id']}]\n> {t.get('question', '')}\n")
@@ -284,7 +327,7 @@ def cmd_trail(a):
 
 
 def cmd_data(a):
-    for d in load(a.export).get('data', []):
+    for d in load(a.export, a.agent).get('data', []):
         print(f"{d.get('series')}\t{d.get('value')} {d.get('unit', '')}\t{d.get('date', '')}\t{(d.get('quote') or '')[:80]}")
 
 
@@ -328,6 +371,11 @@ def cmd_add(a):
         text = open(a.file, encoding='utf-8', errors='replace').read() if a.file else a.text
         j['docs'].append({k: v for k, v in {'id': _id('doc'), 'title': a.title, 'author': a.author, 'date': a.date, 'kind': a.kind, 'era': a.era, 'tags': [t.strip() for t in (a.tags or '').split(',') if t.strip()], 'text': text, 'source': a.source, 'by': a.by, 'added': _now()}.items() if v not in (None, '', [])})
     _save(a.out, j); print(f'added {a.what} → {a.out}')
+    p = bridge_policy()
+    if p is not None:
+        r = p.get('agents', {}).get(a.by, {})
+        if bridge_stopped(): print('note: the bridge is stopped — this file waits until the user resumes transport.')
+        elif r.get('send') is False: print(f'note: the user has isolated {a.by} from sending — this file will be held for their decision.')
 
 
 def main():
@@ -336,9 +384,10 @@ def main():
     def r(name, f, *args):
         p = sp.add_parser(name); p.set_defaults(f=f)
         p.add_argument('--export', default=None, help='path to hub export (default research/hub-export.json)')
+        p.add_argument('--as', dest='agent', default=None, help='your agent name: read through the bridge (isolation, private views)')
         for x in args: x(p)
         return p
-    r('stats', cmd_stats); r('docs', cmd_docs); r('map', cmd_map); r('data', cmd_data); r('gaps', cmd_gaps)
+    r('stats', cmd_stats); r('whoami', cmd_whoami); r('docs', cmd_docs); r('map', cmd_map); r('data', cmd_data); r('gaps', cmd_gaps)
     r('text', cmd_text, lambda p: p.add_argument('doc'), lambda p: p.add_argument('--ref'), lambda p: p.add_argument('--around', type=int, default=0))
     r('search', cmd_search, lambda p: p.add_argument('query'), lambda p: p.add_argument('--n', type=int, default=15))
     r('xref', cmd_xref, lambda p: p.add_argument('--doc'), lambda p: p.add_argument('--text'), lambda p: p.add_argument('--n', type=int, default=10))
