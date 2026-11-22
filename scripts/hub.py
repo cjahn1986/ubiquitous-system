@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Research Hub bridge for the agents: read an export, write importable additions.
 
-The browser app (tools/research/) exports `research-hub-export.json`; save it as
-research/hub-export.json. Agents read it with these commands and write additions to
-research/hub-import-<agent>.json, which the app's Hub & agents → Import merges.
+With the bridge running (python3 scripts/hub_bridge.py, hub opened through it) research/hub-export.json
+is kept current automatically, and files agents write to research/hub-import-<agent>.json are taken into
+the hub automatically. Without the bridge: export from the hub by hand, import the files by hand.
 
 Read:
   hub.py stats   [EXPORT]
@@ -49,7 +49,9 @@ def terms(s):
 def load(path):
     path = path or DEFAULT
     if not os.path.exists(path):
-        sys.exit(f'No export at {path}. In the app: Hub & agents → Export everything, save as research/hub-export.json')
+        sys.exit(f'No hub data at {path}. Ask the user to start the bridge (python3 scripts/hub_bridge.py) and open the hub '
+                 'through it — it keeps this file current — or to export from the hub (Hub & agents → Export everything) '
+                 'and save it as research/hub-export.json')
     with open(path, encoding='utf-8') as f:
         return json.load(f)
 

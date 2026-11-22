@@ -31,6 +31,7 @@ README.md            human-facing overview
   **cartographer** (mind map, gaps, ancient↔modern bridges), **data-steward** (numbers with units,
   BCE-aware dates, quotes), **trail-keeper** (continuity: where a trail stands, open threads, logging).
   All read `research/hub-export.json` via `scripts/hub.py` and write `research/hub-import-<agent>.json`.
+  The **bridge** (`scripts/hub_bridge.py`) moves these automatically while the hub is open through it.
 
 ## Tools (in `tools/`, open the file in a browser)
 - **index.html** — hub: launches the tools, lists the agents, holds a shared
@@ -63,6 +64,13 @@ README.md            human-facing overview
   reports when methods disagree or the ranking is fragile. `--demo` ranks this roadmap.
 - **hub.py** — Research Hub bridge: stats | docs | text | search | xref | gaps | map | trail | data on an
   export; `add node|link|step|data|doc OUT --by AGENT` writes importable additions.
+- **hub_bridge.py** — the bridge: run it instead of `http.server`; serves `tools/` on 127.0.0.1:8000 (same origin
+  as before, so browser data persists) and syncs automatically: hub → `research/hub-export.json` (debounced on
+  change), `research/hub-import-*.json` → hub (settled 2 s, validated, claimed per tab, moved to
+  `research/bridge/delivered/`; invalid → `rejected/`). One terminal line per transfer. API requires header
+  `X-Hub-Bridge: 1` + localhost Host. Client: `tools/research/js/bridge.js` (🌉 pill in the header).
+  A version with transport controls (stop, agent isolation, kept-off sources, review, verbose log) is on
+  branch `bridge-with-controls` — the user chose the simple one.
 - **classics.py** — find | get | align | to-hub over the Perseus/First1KGreek catalogue (raw.githubusercontent).
 - **etym.py** — build (etymology-db CSV or Offline Etymology Engine JSON → `research/etym.sqlite`) | subset |
   lineage | relatives | online.

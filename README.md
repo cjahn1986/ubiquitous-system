@@ -16,9 +16,11 @@ A research workspace for connecting modern subjects with ancient ones across dis
 | **Data** | Data points with units and evidence on one BCE→CE timeline; CSV for the Pattern Tracker. |
 | **Trails** | Each investigation is a line: question → sources → findings → hypotheses → conclusions. While a trail is active, everything you save is logged to it. |
 
-**Run it:** `cd tools && python3 -m http.server 8000`, then open http://localhost:8000/research/ (or use the GitHub Pages URL). Select text anywhere for the action bar.
+**Run it with the bridge** (recommended): from the repo folder run `python3 scripts/hub_bridge.py` and open http://localhost:8000/research/. Select text anywhere for the action bar.
 
-**With the agents:** in the hub go to *Hub & agents → Export everything* and save the file as `research/hub-export.json` in this repo. Then ask the conductor in Claude Code. Agents write `research/hub-import-<agent>.json`, which you import back. `research/` is git-ignored.
+**With the agents:** while the hub is open through the bridge, its data is kept in `research/hub-export.json` for the agents, and whatever they write (`research/hub-import-<agent>.json`) shows up in your hub within seconds. 🌉 in the header shows the bridge is connected; the terminal prints one line per transfer. Just ask the conductor in Claude Code. `research/` is git-ignored: your research never gets committed.
+
+*Without the bridge* (`cd tools && python3 -m http.server 8000`, or the GitHub Pages URL) everything works the same, but you move data by hand: *Hub & agents → Export everything* → save as `research/hub-export.json`; import the agents' files with *Import / merge*.
 
 **Licences:** classical texts are CC BY-SA (Perseus Digital Library, Open Greek and Latin); pdf.js is Apache-2.0 (`tools/research/vendor/pdfjs-LICENSE`). The Loeb Classical Library itself is copyrighted, but pre-1929 volumes are public domain and importable from the Internet Archive.
 

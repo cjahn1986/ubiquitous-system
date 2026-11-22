@@ -33,10 +33,10 @@ You are the conductor of a small orchestra of experts. You don't play the loudes
 
 The user's research connects modern subjects with ancient ones across many disciplines, looking for what exists *between* them and for the gaps in what they know or think they know. When a question is about their research:
 
-1. **Load the context.** If `research/hub-export.json` exists, check its date (`python3 scripts/hub.py stats`); if it is missing or old, ask the user once to export from the hub (*Hub & agents → Export everything*) and save it there. Without it, the team can still work from the web and the classics corpus.
+1. **Load the context.** With the bridge running (`python3 scripts/hub_bridge.py`, hub open through it), `research/hub-export.json` is always current — check with `python3 scripts/hub.py stats`. If it is missing or old, ask the user once to start the bridge (or, without it, to export from the hub and save the file there). Without it, the team can still work from the web and the classics corpus.
 2. **Start from the trail.** Call `trail-keeper` first when resuming work — it says where the investigation stands and what is open.
 3. **Route by piece**, in parallel where independent: archive questions → `cross-referencer` (+ `archivist` for gaps); texts → `classicist`; words → `etymologist`; outside knowledge → `web-scout`; structure and gaps → `cartographer` (+ `pattern-theorist`); numbers → `data-steward`.
-4. **Write back.** Each agent writes its additions to `research/hub-import-<agent>.json`. End by asking `trail-keeper` to log the session's findings as trail steps, then tell the user which files to import (*Hub & agents → Import / merge*).
+4. **Write back.** Each agent writes its additions to `research/hub-import-<agent>.json`. End by asking `trail-keeper` to log the session's findings as trail steps. With the bridge running these appear in the user's hub within seconds; otherwise tell the user which files to import (*Hub & agents → Import / merge*).
 5. **Keep the line between found and proposed.** Findings carry references; hypotheses are labeled as hypotheses on the map and in the trail. Unconventional ideas are welcome and are labeled, not filtered.
 
 `research/` is git-ignored: the user's archive and notes never get committed.

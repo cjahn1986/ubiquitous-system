@@ -140,23 +140,34 @@ RH.exportHub = function ({ withText = true } = {}) {
   const docs = [...S.docs.values()].map(d => withText ? d : { ...d, text: undefined, pages: undefined, segments: undefined });
   return { version: 1, app: 'research-hub', exported: RH.now(), docs, nodes: [...S.nodes.values()], links: [...S.links.values()], trails: [...S.trails.values()], data: [...S.data.values()], etym: [...S.etym.values()].filter(e => e.src === 'engine').length > 5000 ? [] : [...S.etym.values()] };
 };
-RH.importHub = async function (j) {
+RH.importHub = async function (j, { quiet = false } = {}) {
   if (!j || typeof j !== 'object') throw new Error('Not a Research Hub file');
-  let n = 0; const counts = {};
+  const m = {}; const bump = (store, kind) => { (m[store] = m[store] || { new: 0, updated: 0 })[kind]++; };
+  const addSteps = async (t, steps) => { t.steps.push(...steps.map(s => ({ id: uid('st'), time: RH.now(), refs: [], ...s }))); await RH.save('trails', t); (m.steps = m.steps || { new: 0, updated: 0 }).new += steps.length; };
   for (const store of ['docs', 'nodes', 'links', 'trails', 'data', 'etym']) {
     for (const o of j[store] || []) {
       const key = store === 'etym' ? 'key' : 'id'; if (!o[key]) o[key] = uid(store[0]);
-      if (store === 'trails' && S.trails.has(o.id) && o.appendSteps) { const t = S.trails.get(o.id); t.steps.push(...o.appendSteps); await RH.save('trails', t); n++; counts[store] = (counts[store] || 0) + 1; continue; }
+      if (store === 'trails' && o.appendSteps) {
+        const t = S.trails.get(o.id) || RH.activeTrail();
+        if (t) await addSteps(t, o.appendSteps); else { const nt = { id: o.id, title: 'Steps from the agents', question: 'Steps the agents logged while no trail was active', steps: [], created: RH.now(), status: 'open' }; await RH.save('trails', nt); bump('trails', 'new'); await addSteps(nt, o.appendSteps); }
+        continue;
+      }
       const prev = S[store].get(o[key]); const merged = prev && store === 'docs' && !o.text && !o.pages && !o.segments ? { ...prev, ...o, text: prev.text, pages: prev.pages, segments: prev.segments } : { ...(prev || {}), ...o };
-      if (store === 'nodes' && !prev) { const same = RH.findNode(o.label || ''); if (same) { Object.assign(same, Object.fromEntries(Object.entries(o).filter(([k, v]) => k !== 'id' && v && !same[k]))); await RH.save('nodes', same); for (const l of j.links || []) { if (l.from === o.id) l.from = same.id; if (l.to === o.id) l.to = same.id; } continue; } }
+      if (store === 'nodes' && !prev) { const same = RH.findNode(o.label || ''); if (same) { Object.assign(same, Object.fromEntries(Object.entries(o).filter(([k, v]) => k !== 'id' && v && !same[k]))); await RH.save('nodes', same); for (const l of j.links || []) { if (l.from === o.id) l.from = same.id; if (l.to === o.id) l.to = same.id; } bump('nodes', 'updated'); continue; } }
       if (store === 'trails') merged.steps = merged.steps || [];
-      await RH.save(store, merged); n++; counts[store] = (counts[store] || 0) + 1;
+      await RH.save(store, merged); bump(store, prev ? 'updated' : 'new');
     }
   }
-  // agent-style "appendSteps" to the active trail
-  if (j.steps?.length && RH.activeTrail()) { const t = RH.activeTrail(); t.steps.push(...j.steps.map(s => ({ id: uid('st'), time: RH.now(), refs: [], ...s }))); await RH.save('trails', t); counts.steps = j.steps.length; }
-  toast(Object.keys(counts).length ? 'Imported: ' + Object.entries(counts).map(([k, v]) => `${v} ${k}`).join(', ') : 'Nothing new to import'); RH.index.dirty = true;
-  return counts;
+  // agent "steps" go to the active trail
+  if (j.steps?.length) {
+    let t = RH.activeTrail();
+    if (!t) { t = { id: uid('t'), title: 'Steps from the agents', question: 'Steps the agents logged while no trail was active', steps: [], created: RH.now(), status: 'open' }; await RH.save('trails', t); bump('trails', 'new'); }
+    await addSteps(t, j.steps);
+  }
+  RH.index.dirty = true;
+  const said = Object.entries(m).map(([k, v]) => `${v.new + v.updated} ${k}`).join(', ');
+  if (!quiet) toast(said ? 'Imported: ' + said : 'Nothing new to import');
+  return m;
 };
 V.settings = async function (main) {
   const c = { docs: S.docs.size, nodes: S.nodes.size, links: S.links.size, trails: S.trails.size, data: S.data.size, etym: S.etym.size };
@@ -169,6 +180,7 @@ V.settings = async function (main) {
           h('button', { onclick: () => RH.download('research-hub-export-light.json', JSON.stringify(RH.exportHub({ withText: false }))) }, '⤓ Export without texts'), file, h('button', { onclick: () => file.click() }, '⤒ Import / merge')),
         h('div', { class: 'acts' }, h('button', { onclick: async () => { const ok = await navigator.storage?.persist?.(); toast(ok ? 'Storage marked persistent — the browser will not evict it' : 'The browser did not grant persistent storage (it may still keep it)'); } }, '🔒 Ask browser to keep data'))),
       h('div', { class: 'card' }, h('h3', {}, 'Work with the agents'), h('p', { class: 'small' }, 'In Claude Code (in this repo), the ', h('b', {}, 'conductor'), ' leads a research team — archivist, cross-referencer, web-scout, classicist, etymologist, cartographer, data-steward and trail-keeper.'),
+        h('p', { class: 'small' }, h('b', {}, 'Easiest: '), 'run ', h('code', {}, 'python3 scripts/hub_bridge.py'), ' and open the hub through it. Your hub and the agents then stay in sync by themselves (🌉 in the header shows it is connected). Without it:'),
         h('ol', { class: 'small' }, h('li', {}, 'Export everything and save it as ', h('code', {}, 'research/hub-export.json'), ' in the repo folder.'), h('li', {}, 'Ask the conductor anything (“find what connects Heraclitus’ logos to information theory in my archive”).'),
           h('li', {}, 'Agents write ', h('code', {}, 'research/hub-import-*.json'), ' — import it here; their additions are marked with the agent’s name, and hypotheses are labeled.'))),
       h('div', { class: 'card' }, h('h3', {}, 'Ubiquitous System'), h('p', { class: 'small muted' }, 'Share concepts with the Node Explorer and the hub’s tracked-concepts list.'),
